@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: anet/benchmark
+cpu: 12th Gen Intel(R) Core(TM) i7-12700
+BenchmarkGoroutines-20              	       5	 247677284 ns/op	96357673 B/op	 2002379 allocs/op
+BenchmarkPool-20                    	       2	 529587798 ns/op	23369068 B/op	 1097007 allocs/op
+BenchmarkMultiPool-20               	       3	 370603720 ns/op	21735837 B/op	 1079121 allocs/op
+BenchmarkGoroutinesThroughput-20    	       6	 191684764 ns/op	80307496 B/op	 1003046 allocs/op
+BenchmarkPoolThroughput-20          	       3	 487888666 ns/op	 6397490 B/op	   86291 allocs/op
+BenchmarkMultiPoolThroughput-20     	       3	 335598918 ns/op	 4059501 B/op	   67378 allocs/op
+PASS
+ok  	anet/benchmark	13.567s
