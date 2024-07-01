@@ -151,7 +151,7 @@ func (c *connection) init(conn net.Conn, opts *options) {
 	c.inputBuffer = newBytesBuffer(1024)
 	c.outputBuffer = newBytesBuffer(1024)
 	c.state = 0
-	c.id = uuid.New().String()
+	c.id = uuid.New().String()[:8]
 	c.initNetFD(conn)
 	c.initFDOperator()
 	c.initFinalizer()

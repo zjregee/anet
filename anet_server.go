@@ -25,7 +25,6 @@ type server struct {
 
 func (s *server) run() {
 	for {
-		log.Info("waiting for connection accept")
 		conn, err := s.ln.Accept()
 		if err != nil {
 			if strings.Contains(err.Error(), "closed") {
@@ -37,7 +36,6 @@ func (s *server) run() {
 			time.Sleep(10 * time.Millisecond)
 			continue
 		}
-		log.Info("connection accepted")
 		go s.onAccept(conn)
 	}
 }

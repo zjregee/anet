@@ -48,7 +48,7 @@ func (c *connection) onPrepare() {
 	}
 	c.context = context.Background()
 	c.onConnect()
-	log.Info("connection prepared")
+	log.Infof("[conn %s] accepted", c.id)
 	go c.readLoop()
 	go c.writeLoop()
 }
@@ -94,7 +94,7 @@ func (c *connection) onRequest() bool {
 		},
 		func(c *connection) {
 			defer c.unlock(processing)
-			log.Info("connection executes onRequest once")
+			log.Infof("[conn %s] executes onRequest once", c.id)
 			err := onRequest(c.context, c)
 			if err != nil {
 				log.Fatal("error occurred while executing OnRequest")

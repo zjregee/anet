@@ -1,12 +1,14 @@
 package echoserver
 
 import (
+	"os"
 	"net"
 	"time"
 	"bufio"
 	"testing"
 	"math/rand"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,20 +25,24 @@ func randomString(length int) string {
 
 func TestEchoServerSerial(t *testing.T) {
 	port := ":8000"
+	logger := logrus.New()
+	logger.SetOutput(os.Stdout)
+	logger.SetLevel(logrus.WarnLevel)
 	stopchan := make(chan interface{})
-	runServer(port, stopchan)
+	runServer(port, stopchan, logger)
 	defer close(stopchan)
 
-	n := 1
 	m := 1
+	n := 1
 	messageLength := 48
-	for i := 0; i < n ; i++ {
+
+	for i := 0; i < m ; i++ {
 		conn, err := net.Dial("tcp", port)
 		if err != nil {
 			t.Fatalf("failed to connect to server: %v", err)
 		}
 	
-		for j := 0; j < m; j++ {
+		for j := 0; j < n; j++ {
 			message := randomString(messageLength) +  "\n"
 			_, err = conn.Write([]byte(message))
 			if err != nil {

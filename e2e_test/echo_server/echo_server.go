@@ -1,17 +1,13 @@
 package echoserver
 
 import (
-	"os"
 	"context"
 
 	"github.com/zjregee/anet"
 	"github.com/sirupsen/logrus"
 )
 
-func runServer(port string, stopChan chan interface{}) {
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.WarnLevel)
+func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
 	anet.SetLogger(logger)
 
 	listener, err := anet.CreateListener("tcp", port)

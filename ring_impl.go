@@ -23,7 +23,7 @@ const (
 func newDefaultRing()  (Ring, error) {
 	ring := &defaultRing{}
 	C.io_uring_queue_init(DEFAULT_RING_SIZE, &ring.ring, 0)
-	ring.id = uuid.New().String()
+	ring.id = uuid.New().String()[:8]
 	ring.opcache = sync.Pool{
 		New: func() interface{} {
 			return &FDOperator{}
@@ -69,7 +69,6 @@ func (r *defaultRing) Id() string {
 func (r *defaultRing) Wait() error {
 	var cqe *C.struct_io_uring_cqe
 	for {
-		// log.Infof("[ring] waiting for completed event")
 		if C.io_uring_wait_cqe(&r.ring, &cqe) < 0 {
 			log.Fatalf("[ring %s] quit since error occurred while waiting", r.id)
 			r.onClose()
@@ -113,7 +112,7 @@ func (r *defaultRing) Wait() error {
 func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData interface{}) error {
 	switch event {
 	case RingPrepRead:
-		log.Infof("[ring] new event has sumitted, fd: %d, event: prep read", operator.FD)
+		log.Infof("[ring %s] new event has sumitted, fd: %d, event: prep read", r.id, operator.FD)
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
 			return errors.New("failed to get SQE")
@@ -127,7 +126,7 @@ func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData in
 			return errors.New("failed to submit SQE")
 		}
 	case RingPRepWrite:
-		log.Infof("[ring] new event has sumitted, fd: %d, event: prep write", operator.FD)
+		log.Infof("[ring %s] new event has sumitted, fd: %d, event: prep write", r.id, operator.FD)
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
 			return errors.New("failed to get SQE")
@@ -164,7 +163,7 @@ func (r *defaultRing) Free(operator *FDOperator) {
 	r.opcache.Put(operator)
 }
 
-// will cased failed for now
+// will cased failure for now
 func (r *defaultRing) registerEventFD(fd int) error {
 	operator := &FDOperator{}
 	operator.FD = fd
