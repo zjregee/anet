@@ -33,7 +33,7 @@ func TestEchoServerSerial(t *testing.T) {
 	defer close(stopchan)
 
 	m := 1
-	n := 1
+	n := 10
 	messageLength := 48
 
 	for i := 0; i < m ; i++ {
@@ -41,19 +41,19 @@ func TestEchoServerSerial(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to connect to server: %v", err)
 		}
-	
+
 		for j := 0; j < n; j++ {
 			message := randomString(messageLength) +  "\n"
 			_, err = conn.Write([]byte(message))
 			if err != nil {
 				t.Fatalf("failed to send message: %v", err)
 			}
-		
+
 			response, err := bufio.NewReader(conn).ReadString('\n')
 			if err != nil {
 				t.Fatalf("failed to read response: %v", err)
 			}
-		
+
 			require.Equal(t, message, response)
 		}
 

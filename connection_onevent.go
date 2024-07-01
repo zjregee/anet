@@ -111,9 +111,13 @@ func (c *connection) onProcess(isProcessable func(c *connection) bool, process f
 	if !c.lock(processing) {
 		return false
 	}
-	if isProcessable(c) {
-		process(c)
-	}
+	go func() {
+		for {
+			if isProcessable(c) {
+				process(c)
+			}
+		}
+	}()
 	// go func() {
 	// 	panicked := true
 	// 	defer func() {
