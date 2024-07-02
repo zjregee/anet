@@ -147,6 +147,8 @@ func main() {
 	n := 100
 	messageLength := 48
 
+	start := time.Now()
+
 	for i := 0; i < m; i++ {
 		conn, err := net.Dial("tcp", port)
 		if err != nil {
@@ -177,9 +179,11 @@ func main() {
 			}
 		}
 
-		if (i % 10000 == 0) {
-			fmt.Printf("%vw passed\n", i / 10000)
-		}
 		conn.Close()
 	}
+
+	elapsed := time.Since(start)
+	minutes := int(elapsed.Minutes())
+    seconds := int(elapsed.Seconds()) % 60
+	fmt.Printf("the total time for uring to execute %dk connections, with %d writes per connection, is: %d minutes %d seconds\n", m / 1000, n, minutes, seconds)
 }

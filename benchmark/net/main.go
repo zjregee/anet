@@ -21,7 +21,7 @@ func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				logger.Warnf("error occured when accept: %s", err.Error())
+				logger.Warnf("error occurred when accept: %s", err.Error())
 				continue
 			}
 			handleConnection(conn, logger)
@@ -43,17 +43,17 @@ func handleConnection(conn net.Conn, logger *logrus.Logger) {
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			logger.Warnf("error occured when read: %s",err.Error())
+			logger.Warnf("error occurred when read: %s",err.Error())
 			return
 		}
 		_, err = writer.WriteString(message)
 		if err != nil {
-			logger.Warnf("error occured when write: %s",err.Error())
+			logger.Warnf("error occurred when write: %s",err.Error())
 			return
 		}
 		err = writer.Flush()
 		if err != nil {
-			logger.Warnf("error occured when flush: %s",err.Error())
+			logger.Warnf("error occurred when flush: %s",err.Error())
 			return
 		}
 	}
@@ -82,6 +82,8 @@ func main() {
 	m := 100000
 	n := 100
 	messageLength := 48
+
+	start := time.Now()
 
 	for i := 0; i < m; i++ {
 		conn, err := net.Dial("tcp", port)
@@ -113,9 +115,11 @@ func main() {
 			}
 		}
 
-		if (i % 10000 == 0) {
-			fmt.Printf("%vw passed\n", i / 10000)
-		}
 		conn.Close()
 	}
+
+	elapsed := time.Since(start)
+	minutes := int(elapsed.Minutes())
+    seconds := int(elapsed.Seconds()) % 60
+	fmt.Printf("the total time for net to execute %dk connections, with %d writes per connection, is: %d minutes %d seconds\n", m / 1000, n, minutes, seconds)
 }
