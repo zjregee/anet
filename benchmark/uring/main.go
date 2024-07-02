@@ -37,7 +37,7 @@ func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				logger.Warnf("error occured when accept: %s", err.Error())
+				logger.Warnf("error occurred when accept: %s", err.Error())
 				continue
 			}
 			handleConnection(conn, &ring, logger)
@@ -64,23 +64,55 @@ func handleConnection(conn net.Conn, ring *C.struct_io_uring, logger *logrus.Log
 	buffer := make([]byte, BUFFER_SIZE)
 
 	for {
-		n, err := conn.Read(buffer)
-		if err != nil {
-			logger.Warnf("error occured when read: %s",err.Error())
-			return
-		}
 		sqe := C.io_uring_get_sqe(ring)
-		C.io_uring_prep_write(sqe, C.int(fd), unsafe.Pointer(&buffer[0]), C.uint(n), 0)
+		C.io_uring_prep_read(sqe, C.int(fd), unsafe.Pointer(&buffer[0]), C.uint(BUFFER_SIZE), 0)
 		C.io_uring_submit(ring)
+
+		var n int
 		var cqe *C.struct_io_uring_cqe
 		for {
 			C.io_uring_wait_cqe(ring, &cqe)
+			if cqe == nil {
+				continue
+			}
 			if cqe.res < 0 {
 				errno := syscall.Errno(-cqe.res)
 				if errno == syscall.EAGAIN {
+					C.io_uring_cqe_seen(ring, cqe)
 					continue
 				} else {
-					logger.Warnf("error occured when write: %s", errno.Error())
+					logger.Warnf("error occurred when read: %s", errno.Error())
+					C.io_uring_cqe_seen(ring, cqe)
+					return
+				}
+			} else {
+				n = int(cqe.res)
+				break
+			}
+		}
+		C.io_uring_cqe_seen(ring, cqe)
+
+		if n == 0 {
+			return
+		}
+
+		sqe = C.io_uring_get_sqe(ring)
+		C.io_uring_prep_write(sqe, C.int(fd), unsafe.Pointer(&buffer[0]), C.uint(n), 0)
+		C.io_uring_submit(ring)
+
+		for {
+			C.io_uring_wait_cqe(ring, &cqe)
+			if cqe == nil {
+				continue
+			}
+			if cqe.res < 0 {
+				errno := syscall.Errno(-cqe.res)
+				if errno == syscall.EAGAIN {
+					C.io_uring_cqe_seen(ring, cqe)
+					continue
+				} else {
+					logger.Warnf("error occurred when write: %s", errno.Error())
+					C.io_uring_cqe_seen(ring, cqe)
 					return
 				}
 			} else {
@@ -106,7 +138,7 @@ func main() {
 	port := ":8000"
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.FatalLevel)
+	logger.SetLevel(logrus.InfoLevel)
 	stopchan := make(chan interface{})
 	runServer(port, stopchan, logger)
 	defer close(stopchan)
@@ -122,6 +154,7 @@ func main() {
 			conn.Close()
 			continue
 		}
+
 		for j := 0; j < n; j++ {
 			message := randomString(messageLength) +  "\n"
 			_, err = conn.Write([]byte(message))
