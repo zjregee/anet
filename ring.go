@@ -8,26 +8,23 @@ type LoadBalance interface {
 type Ring interface {
 	Id() string
 	Wait() error
-	Submit(operator *FDOperator, event RingEvent, eventData interface{}) error
+	Submit(eventData RingEventData)
 	Alloc() *FDOperator
 	Free(operator *FDOperator)
 	Register(operator *FDOperator)
 	Close() error
 }
 
-type PrepReadEventData struct {
-	Size int
-	Data []byte
-}
-
-type PrepWriteEventData struct {
-	Size int
-	Data []byte
-}
-
 type RingEvent int
 
 const (
 	RingPrepRead  RingEvent = 0x1
-	RingPRepWrite RingEvent = 0x2
+	RingPrepWrite RingEvent = 0x2
 )
+
+type RingEventData struct {
+	Size     int
+	Data     []byte
+	Event    RingEvent
+	Operator *FDOperator
+}

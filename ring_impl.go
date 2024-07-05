@@ -8,7 +8,6 @@ import "C"
 
 import (
 	"sync"
-	"errors"
 	"unsafe"
 	"syscall"
 
@@ -16,13 +15,14 @@ import (
 )
 
 const (
-	DEFAULT_RING_SIZE = 1024
+	DEFAULT_RING_SIZE = 24
 )
 
 func newDefaultRing() (Ring, error) {
 	ring := &defaultRing{}
 	C.io_uring_queue_init(DEFAULT_RING_SIZE, &ring.ring, 0)
 	ring.id = uuid.New().String()[:8]
+	ring.ch = make(chan RingEventData, 4)
 	ring.opcache = sync.Pool{
 		New: func() interface{} {
 			return &FDOperator{}
@@ -45,11 +45,11 @@ func decodeUserData(data uint64) (RingEvent, int) {
 }
 
 type defaultRing struct {
-	mu      sync.Mutex
 	id      string
 	opmap   sync.Map
 	opcache sync.Pool
 	ring    C.struct_io_uring
+	ch      chan RingEventData
 }
 
 func (r *defaultRing) Id() string {
@@ -57,6 +57,8 @@ func (r *defaultRing) Id() string {
 }
 
 func (r *defaultRing) Wait() error {
+	go r.submitLoop()
+
 	var cqe *C.struct_io_uring_cqe
 	for {
 		C.io_uring_wait_cqe(&r.ring, &cqe)
@@ -81,7 +83,7 @@ func (r *defaultRing) Wait() error {
 			} else {
 				operator.OnRead(int(cqe.res), nil)
 			}
-		case RingPRepWrite:
+		case RingPrepWrite:
 			if cqe.res < 0 {
 				errno := syscall.Errno(-cqe.res)
 				if errno == syscall.EAGAIN {
@@ -99,38 +101,8 @@ func (r *defaultRing) Wait() error {
 	}
 }
 
-func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData interface{}) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	switch event {
-	case RingPrepRead:
-		sqe := C.io_uring_get_sqe(&r.ring)
-		if sqe == nil {
-			return errors.New("failed to get SQE")
-		}
-		data := eventData.(PrepReadEventData)
-		userData := encodeUserData(RingPrepRead, operator.FD)
-		sqe.user_data = C.ulonglong(userData)
-		C.io_uring_prep_read(sqe, C.int(operator.FD), unsafe.Pointer(&data.Data[0]), C.uint(data.Size), 0)
-		if C.io_uring_submit(&r.ring) < 0 {
-			return errors.New("failed to submit SQE")
-		}
-	case RingPRepWrite:
-		sqe := C.io_uring_get_sqe(&r.ring)
-		if sqe == nil {
-			return errors.New("failed to get SQE")
-		}
-		data := eventData.(PrepWriteEventData)
-		userData := encodeUserData(RingPRepWrite, operator.FD)
-		sqe.user_data = C.ulonglong(userData)
-		C.io_uring_prep_write(sqe, C.int(operator.FD), unsafe.Pointer(&data.Data[0]), C.uint(data.Size), 0)
-		if C.io_uring_submit(&r.ring) < 0 {
-			return errors.New("failed to submit SQE")
-		}
-	default:
-		return errors.New("unsupported RingEvent")
-	}
-	return nil
+func (r *defaultRing) Submit(eventData RingEventData) {
+	r.ch <- eventData
 }
 
 func (r *defaultRing) Close() error {
@@ -149,6 +121,28 @@ func (r *defaultRing) Free(operator *FDOperator) {
 
 func (r *defaultRing) Register(operator *FDOperator) {
 	r.opmap.Store(operator.FD, operator)
+}
+
+func (r *defaultRing) submitLoop() {
+	for eventData := range r.ch {
+		sqe := C.io_uring_get_sqe(&r.ring)
+		if sqe == nil {
+			panic("can't failed here")
+		}
+		switch eventData.Event {
+		case RingPrepRead:
+			userData := encodeUserData(RingPrepRead, eventData.Operator.FD)
+			sqe.user_data = C.ulonglong(userData)
+			C.io_uring_prep_read(sqe, C.int(eventData.Operator.FD), unsafe.Pointer(&eventData.Data[0]), C.uint(eventData.Size), 0)
+		case RingPrepWrite:
+			userData := encodeUserData(RingPrepWrite, eventData.Operator.FD)
+			sqe.user_data = C.ulonglong(userData)
+			C.io_uring_prep_write(sqe, C.int(eventData.Operator.FD), unsafe.Pointer(&eventData.Data[0]), C.uint(eventData.Size), 0)
+		default:
+			panic("can't failed here")
+		}
+		C.io_uring_submit(&r.ring)
+	}
 }
 
 func (r *defaultRing) getOperator(fd int) *FDOperator {

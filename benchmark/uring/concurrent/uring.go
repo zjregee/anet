@@ -60,15 +60,12 @@ func (c *connection) run() {
 	defer c.close()
 
 	for {
-		readEventData := anet.PrepReadEventData{}
+		readEventData := anet.RingEventData{}
 		readEventData.Size = BUFFER_SIZE
 		readEventData.Data = c.buffer
-		err := c.operator.Submit(anet.RingPrepRead, readEventData)
-		if err != nil {
-			c.logger.Warnf("error occurred when submit read: %s", err.Error())
-			return
-		}
-		err = <-c.readTrigger
+		readEventData.Event = anet.RingPrepRead
+		c.operator.Submit(readEventData)
+		err := <-c.readTrigger
 		if err != nil {
 			c.logger.Warnf("error occurred when read: %s", err.Error())
 			return
@@ -78,14 +75,11 @@ func (c *connection) run() {
 			return
 		}
 
-		writeEventData := anet.PrepWriteEventData{}
+		writeEventData := anet.RingEventData{}
 		writeEventData.Size = c.size
 		writeEventData.Data = c.buffer
-		err = c.operator.Submit(anet.RingPRepWrite, writeEventData)
-		if err != nil {
-			c.logger.Warnf("error occurred when submit write: %s", err.Error())
-			return
-		}
+		writeEventData.Event = anet.RingPrepWrite
+		c.operator.Submit(writeEventData)
 		err = <-c.writeTrigger
 		if err != nil {
 			c.logger.Warnf("error occurred when write: %s", err.Error())

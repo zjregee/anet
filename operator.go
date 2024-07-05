@@ -7,8 +7,9 @@ type FDOperator struct {
 	Ring    Ring
 }
 
-func (op *FDOperator) Submit(evnet RingEvent, eventData interface{}) error {
-	return op.Ring.Submit(op, evnet, eventData)
+func (op *FDOperator) Submit(eventData RingEventData) {
+	eventData.Operator = op
+	op.Ring.Submit(eventData)
 }
 
 func (op *FDOperator) Register() {

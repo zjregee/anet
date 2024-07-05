@@ -51,15 +51,12 @@ func (m *manager) Run() error {
 	var rings []Ring
 	for index := 0; index < m.numLoops; index++ {
 		ring, err := newDefaultRing()
-		if err == nil {
-			go ring.Wait()
-			rings = append(rings, ring)
-		} else {
+		if err != nil {
 			errs = append(errs, err)
-			err = ring.Close()
-			if err != nil {
-				log.Fatal("error occurred while closeing ring")
-			}
+			log.Warnf("error occurred while open ring")
+		} else {
+			go ring.Wait()
+			rings = append(rings, ring)	
 		}
 	}
 	m.rings = rings
