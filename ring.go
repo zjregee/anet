@@ -11,17 +11,18 @@ type Ring interface {
 	Submit(operator *FDOperator, event RingEvent, eventData interface{}) error
 	Alloc() *FDOperator
 	Free(operator *FDOperator)
+	Register(operator *FDOperator)
 	Close() error
 }
 
 type PrepReadEventData struct {
-	size int
-	data []byte
+	Size int
+	Data []byte
 }
 
 type PrepWriteEventData struct {
-	size int
-	data []byte
+	Size int
+	Data []byte
 }
 
 type RingEvent int

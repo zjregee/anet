@@ -12,7 +12,6 @@ import (
 	"unsafe"
 	"syscall"
 
-	"golang.org/x/sys/unix"
 	"github.com/google/uuid"
 )
 
@@ -20,7 +19,7 @@ const (
 	DEFAULT_RING_SIZE = 1024
 )
 
-func newDefaultRing()  (Ring, error) {
+func newDefaultRing() (Ring, error) {
 	ring := &defaultRing{}
 	C.io_uring_queue_init(DEFAULT_RING_SIZE, &ring.ring, 0)
 	ring.id = uuid.New().String()[:8]
@@ -29,14 +28,6 @@ func newDefaultRing()  (Ring, error) {
 			return &FDOperator{}
 		},
 	}
-	// fd, err := unix.Eventfd(0, 0)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// err = ring.registerEventFD(fd)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return ring, nil
 }
 
@@ -54,9 +45,8 @@ func decodeUserData(data uint64) (RingEvent, int) {
 }
 
 type defaultRing struct {
+	mu      sync.Mutex
 	id      string
-	wop    	*FDOperator
-	buf     []byte
 	opmap   sync.Map
 	opcache sync.Pool
 	ring    C.struct_io_uring
@@ -69,50 +59,51 @@ func (r *defaultRing) Id() string {
 func (r *defaultRing) Wait() error {
 	var cqe *C.struct_io_uring_cqe
 	for {
-		if C.io_uring_wait_cqe(&r.ring, &cqe) < 0 {
-			log.Fatalf("[ring %s] quit since error occurred while waiting", r.id)
-			r.onClose()
-			return errors.New("failed to wait CQE")
+		C.io_uring_wait_cqe(&r.ring, &cqe)
+		if cqe == nil {
+			continue
 		}
-		if cqe.res < 0 {
-			errno := syscall.Errno(-cqe.res)
-			if errno == syscall.EAGAIN {
-				log.Fatalf("[ring %s] error occurred while waiting, wait 10ms to retry", r.id)
-				continue
-			} else {
-				log.Fatalf("[ring %s] quit since error occurred while waiting", r.id)
-				r.onClose()
-				return errors.New("failed to wait CQE")
-			}
-		}
+		C.io_uring_cqe_seen(&r.ring, cqe)
+
 		userData := uint64(cqe.user_data)
 		event, fd := decodeUserData(userData)
 		operator := r.getOperator(fd)
 		switch event {
 		case RingPrepRead:
-			if r.wop != nil && operator.FD == r.wop.FD {
-				log.Infof("[ring %s] quit since eventfd triggered", r.id)
-				C.io_uring_cqe_seen(&r.ring, cqe)
-				r.onClose()
-				return nil
+			if cqe.res < 0 {
+				errno := syscall.Errno(-cqe.res)
+				if errno == syscall.EAGAIN {
+					log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
+					continue
+				} else {
+					operator.OnRead(int(cqe.res), errno)
+				}
+			} else {
+				operator.OnRead(int(cqe.res), nil)
 			}
-			log.Infof("[ring %s] new event has completed, fd: %d, event: prep read", r.id, operator.FD)
-			operator.OnRead(int(cqe.res))
 		case RingPRepWrite:
-			log.Infof("[ring %s] new event has completed, fd: %d, event: prep write", r.id, operator.FD)
-			operator.OnWrite(int(cqe.res))
+			if cqe.res < 0 {
+				errno := syscall.Errno(-cqe.res)
+				if errno == syscall.EAGAIN {
+					log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
+					continue
+				} else {
+					operator.OnWrite(int(cqe.res), errno)
+				}
+			} else {
+				operator.OnWrite(int(cqe.res), nil)
+			}
 		default:
-			log.Fatalf("[ring %s] quit since error occurred while waiting", r.id)
-			return errors.New("unsupported RingEvent")
+			log.Warnf("[ring %s] unsupported RingEvent", r.id)
 		}
-		C.io_uring_cqe_seen(&r.ring, cqe)
 	}
 }
 
 func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData interface{}) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	switch event {
 	case RingPrepRead:
-		log.Infof("[ring %s] new event has sumitted, fd: %d, event: prep read", r.id, operator.FD)
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
 			return errors.New("failed to get SQE")
@@ -120,13 +111,11 @@ func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData in
 		data := eventData.(PrepReadEventData)
 		userData := encodeUserData(RingPrepRead, operator.FD)
 		sqe.user_data = C.ulonglong(userData)
-		r.setOperator(operator.FD, operator)
-		C.io_uring_prep_read(sqe, C.int(operator.FD), unsafe.Pointer(&data.data[0]), C.uint(data.size), 0)
+		C.io_uring_prep_read(sqe, C.int(operator.FD), unsafe.Pointer(&data.Data[0]), C.uint(data.Size), 0)
 		if C.io_uring_submit(&r.ring) < 0 {
 			return errors.New("failed to submit SQE")
 		}
 	case RingPRepWrite:
-		log.Infof("[ring %s] new event has sumitted, fd: %d, event: prep write", r.id, operator.FD)
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
 			return errors.New("failed to get SQE")
@@ -134,8 +123,7 @@ func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData in
 		data := eventData.(PrepWriteEventData)
 		userData := encodeUserData(RingPRepWrite, operator.FD)
 		sqe.user_data = C.ulonglong(userData)
-		r.setOperator(operator.FD, operator)
-		C.io_uring_prep_write(sqe, C.int(operator.FD), unsafe.Pointer(&data.data[0]), C.uint(data.size), 0)
+		C.io_uring_prep_write(sqe, C.int(operator.FD), unsafe.Pointer(&data.Data[0]), C.uint(data.Size), 0)
 		if C.io_uring_submit(&r.ring) < 0 {
 			return errors.New("failed to submit SQE")
 		}
@@ -146,11 +134,7 @@ func (r *defaultRing) Submit(operator *FDOperator, event RingEvent, eventData in
 }
 
 func (r *defaultRing) Close() error {
-	if r.wop == nil {
-		return nil
-	}
-	_, err := unix.Write(r.wop.FD, []byte("1"))
-	return err
+	return nil
 }
 
 func (r *defaultRing) Alloc() *FDOperator {
@@ -159,29 +143,12 @@ func (r *defaultRing) Alloc() *FDOperator {
 
 func (r *defaultRing) Free(operator *FDOperator) {
 	r.delOperator(operator.FD)
-	operator.reset()
+	operator.Reset()
 	r.opcache.Put(operator)
 }
 
-// will cased failure for now
-func (r *defaultRing) registerEventFD(fd int) error {
-	operator := &FDOperator{}
-	operator.FD = fd
-	r.wop = operator
-	r.buf = make([]byte, 1)
-	r.setOperator(operator.FD, operator)
-	log.Infof("[ring %s] register eventfd", r.id)
-	sqe := C.io_uring_get_sqe(&r.ring)
-	if sqe == nil {
-		return errors.New("failed to get SQE")
-	}
-	userData := encodeUserData(RingPrepRead, fd)
-	sqe.user_data = C.ulonglong(userData)
-	C.io_uring_prep_read(sqe, C.int(operator.FD), unsafe.Pointer(&r.buf[0]), 1, 0)
-	if C.io_uring_submit(&r.ring) < 0 {
-		return errors.New("failed to submit SQE")
-	}
-	return nil
+func (r *defaultRing) Register(operator *FDOperator) {
+	r.opmap.Store(operator.FD, operator)
 }
 
 func (r *defaultRing) getOperator(fd int) *FDOperator {
@@ -192,20 +159,10 @@ func (r *defaultRing) getOperator(fd int) *FDOperator {
 	return operator.(*FDOperator)
 }
 
-func (r *defaultRing) setOperator(fd int, operator *FDOperator) {
-	r.opmap.Store(fd, operator)
-}
-
 func (r *defaultRing) delOperator(fd int) {
 	r.opmap.Delete(fd)
 }
 
 func (r *defaultRing) onClose() {
-	if r.wop != nil {
-		err := unix.Close(r.wop.FD)
-		if err != nil {
-			log.Fatalf("[ring %s] error occurred when close eventfd", r.id)
-		}
-	}
 	C.io_uring_queue_exit(&r.ring)
 }

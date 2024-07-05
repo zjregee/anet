@@ -6,10 +6,10 @@ import (
 )
 
 func newDefaultRingManager(n int) *manager {
-	ringmanager = &manager{}
+	ringmanager := &manager{}
 	ringmanager.numLoops = n
 	ringmanager.balance = &roundRobinLB{}
-	err := ringmanager.run()
+	err := ringmanager.Run()
 	if err != nil {
 		panic("can't failed here")
 	}
@@ -34,7 +34,7 @@ func (b *roundRobinLB) Rebalance(rings []Ring) {
 	b.lastpicked = 0
 }
 
-var ringmanager *manager
+var RingManager *manager
 
 type manager struct {
 	numLoops int
@@ -42,11 +42,11 @@ type manager struct {
 	balance  LoadBalance
 }
 
-func (m *manager) pick() Ring {
+func (m *manager) Pick() Ring {
 	return m.balance.Pick()
 }
 
-func (m *manager) run() error {
+func (m *manager) Run() error {
 	var errs []error
 	var rings []Ring
 	for index := 0; index < m.numLoops; index++ {

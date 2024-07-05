@@ -2,22 +2,26 @@ package anet
 
 type FDOperator struct {
 	FD      int
-	OnRead  func(n int) error
-	OnWrite func(n int) error
-	ring    Ring
+	OnRead  func(n int, err error)
+	OnWrite func(n int, err error)
+	Ring    Ring
 }
 
-func (op *FDOperator) submit(evnet RingEvent, eventData interface{}) error {
-	return op.ring.Submit(op, evnet, eventData)
+func (op *FDOperator) Submit(evnet RingEvent, eventData interface{}) error {
+	return op.Ring.Submit(op, evnet, eventData)
 }
 
-func (op *FDOperator) free() {
-	op.ring.Free(op)
+func (op *FDOperator) Register() {
+	op.Ring.Register(op)
 }
 
-func (op *FDOperator) reset() {
+func (op *FDOperator) Free() {
+	op.Ring.Free(op)
+}
+
+func (op *FDOperator) Reset() {
 	op.FD = 0
 	op.OnRead = nil
 	op.OnWrite = nil
-	op.ring = nil	
+	op.Ring = nil	
 }
