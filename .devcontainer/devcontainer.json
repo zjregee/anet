@@ -1,0 +1,5 @@
+{
+	"name": "Go",
+    "dockerFile": "Dockerfile",
+    "postCreateCommand": "go mod tidy"
+}
