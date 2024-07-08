@@ -59,7 +59,7 @@ func (s *server) onAccept(conn net.Conn) {
 func (s *server) close(ctx context.Context) error {
 	err := s.ln.Close()
 	if err != nil {
-		log.Error("error occured while close listener")
+		log.Error("error occurred while close listener")
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -71,7 +71,7 @@ func (s *server) close(ctx context.Context) error {
 			connection := value.(*connection)
 			err := connection.Close()
 			if err != nil {
-				log.Error("error occured while close connection")
+				log.Error("error occurred while close connection")
 			}
 			return true
 		})

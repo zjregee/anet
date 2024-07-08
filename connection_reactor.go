@@ -8,31 +8,23 @@ const (
 	defaultReadSize = 1024
 )
 
-func (c *connection) onRead(n int) error {
+func (c *connection) onRead(n int, err error) {
 	log.Infof("[conn %s] has read %d bytes of new data", c.id, n)
-	err := c.inputBuffer.BookAck(n)
-	if err != nil {
-		return err
-	}
+	c.inputBuffer.BookAck(n)
 	processed := c.onRequest()
 	if !processed && n >= int(atomic.LoadInt32(&c.waitReadSize)) {
 		// there is a goroutine waiting for enough data
 		c.triggerRead(nil)
 	}
 	c.triggerReadLoop(nil)
-	return nil
 }
 
-func (c *connection) onWrite(n int) error {
+func (c *connection) onWrite(n int, err error) {
 	log.Infof("[conn %s] has write %d bytes of new data", c.id, n)
-	err := c.outputBuffer.SeekAck(n)
-	if err != nil {
-		return err
-	}
+	c.outputBuffer.SeekAck(n)
 	c.unlock(flushing)
 	c.triggerWrite(nil)
 	c.triggerWriteLoop(nil)
-	return nil
 }
 
 func (c *connection) onHup() error {
@@ -83,10 +75,11 @@ func (c *connection) onClose() error {
 func (c *connection) readLoop() {
 	for {
 		log.Infof("[conn %s] sumbit prep read event", c.id)
-		eventData := PrepReadEventData{}
-		eventData.size = defaultReadSize
-		eventData.data = c.inputBuffer.Book(defaultReadSize)
-		c.operator.submit(RingPrepRead, eventData)
+		eventData := RingEventData{}
+		eventData.Size = defaultReadSize
+		eventData.Data = c.inputBuffer.Book(defaultReadSize)
+		eventData.Event = RingPrepRead
+		c.operator.Submit(eventData)
 		err := <-c.readLoopTrigger
 		if err != nil {
 			log.Infof("[conn %s] read loop quit since connection closed", c.id)
@@ -100,14 +93,15 @@ func (c *connection) writeLoop() {
 		size := c.outputBuffer.Len()
 		if size > 0 && c.lock(flushing) {
 			log.Infof("[conn %s] sumbit prep write event", c.id)
-			eventData := PrepWriteEventData{}
-			eventData.size = size
-			eventData.data, _ = c.outputBuffer.Seek(size)
-			c.operator.submit(RingPRepWrite, eventData)
+			eventData := RingEventData{}
+			eventData.Size = size
+			eventData.Data, _ = c.outputBuffer.Seek(size)
+			eventData.Event = RingPrepWrite
+			c.operator.Submit(eventData)
 		}
 		err := <-c.writeLoopTrigger
 		if err != nil {
-			log.Infof("[conn %s] read loop quit since connection closed", c.id)
+			log.Infof("[conn %s] write loop quit since connection closed", c.id)
 			return
 		}
 	}

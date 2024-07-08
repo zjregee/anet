@@ -148,8 +148,8 @@ func (c *connection) init(conn net.Conn, opts *options) {
 	c.writeTrigger = make(chan error)
 	c.readLoopTrigger = make(chan error)
 	c.writeLoopTrigger = make(chan error)
-	c.inputBuffer = newBytesBuffer(1024)
-	c.outputBuffer = newBytesBuffer(1024)
+	c.inputBuffer = newBytesBuffer(4096)
+	c.outputBuffer = newBytesBuffer(4096)
 	c.state = 0
 	c.id = uuid.New().String()[:8]
 	c.initNetFD(conn)
@@ -166,18 +166,18 @@ func (c *connection) initNetFD(conn net.Conn) {
 }
 
 func (c *connection) initFDOperator() {
-	ring := ringmanager.pick()
+	ring := RingManager.Pick()
 	op := ring.Alloc()
 	op.FD = c.fd
 	op.OnRead = c.onRead
 	op.OnWrite = c.onWrite
-	op.ring = ring
+	op.Ring = ring
 	c.operator = op
 }
 
 func (c *connection) initFinalizer() {
 	c.AddCloseCallback(func(connection Connection) error {
-		c.operator.free()
+		c.operator.Free()
 		return nil
 	})
 }

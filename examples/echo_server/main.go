@@ -39,15 +39,15 @@ func handler(ctx context.Context, connection anet.Connection) error {
 	defer connection.Close()
 	data, err := reader.ReadAll();
 	if err != nil {
-		fmt.Println("error occured while reading connection: {}", err.Error())
+		fmt.Println("error occurred while reading connection: {}", err.Error())
 	}
 	err = writer.WriteBytes(data, len(data));
 	if err != nil {
-		fmt.Println("error occured while writing connection: {}", err.Error())
+		fmt.Println("error occurred while writing connection: {}", err.Error())
 	}
 	err = writer.Flush()
 	if err != nil {
-		fmt.Println("error occured while flushing connection: {}", err.Error())
+		fmt.Println("error occurred while flushing connection: {}", err.Error())
 	}
 	return nil
 }

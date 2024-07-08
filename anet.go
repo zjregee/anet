@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 	"context"
-	"runtime"
+	// "runtime"
 )
 
 func CreateListener(network, addr string) (net.Listener, error) {
@@ -37,8 +37,8 @@ type OnConnect func(ctx context.Context, connection Connection) context.Context
 
 func init() {
 	log = newDefaultLogger()
-	n := (runtime.GOMAXPROCS(0) - 1) / 20 + 1
-	ringmanager = newDefaultRingManager(n)
+	// n := (runtime.GOMAXPROCS(0) - 1) / 20 + 1
+	RingManager = newDefaultRingManager(4)
 }
 
 type eventLoop struct {
@@ -114,7 +114,7 @@ func (evl *eventLoop) ShutdownWithContext(ctx context.Context) error {
 	}
 	err := svr.close(ctx)
 	if err != nil {
-		log.Error("[EventLoop] error occured while closing")
+		log.Error("[EventLoop] error occurred while closing")
 	}
 	return err
 }
