@@ -62,7 +62,7 @@ func main() {
 	defer close(stopchan)
 
 	c := 12
-	m := 10000
+	m := 1000
 	n := 100
 	messageLength := 48
 
@@ -71,7 +71,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 0; i < c; i++ {
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			for j := 0; j < m; j++ {
 				conn, err := net.Dial("tcp", port)
@@ -105,12 +105,12 @@ func main() {
 
 				conn.Close()
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 
 	elapsed := time.Since(start)
 	minutes := int(elapsed.Minutes())
     seconds := int(elapsed.Seconds()) % 60
-	fmt.Printf("the total time for uring to execute %dk connections, with %d writes per connection, is: %d minutes %d seconds\n", m / 1000, n, minutes, seconds)
+	fmt.Printf("the total time for uring to execute %dk connections using %d goroutines, with %d writes per connection, is: %d minutes and %d seconds\n", c * m / 1000, c, n, minutes, seconds)
 }

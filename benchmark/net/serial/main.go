@@ -79,7 +79,7 @@ func main() {
 	runServer(port, stopchan, logger)
 	defer close(stopchan)
 
-	m := 100000
+	m := 10000
 	n := 100
 	messageLength := 48
 
@@ -121,5 +121,5 @@ func main() {
 	elapsed := time.Since(start)
 	minutes := int(elapsed.Minutes())
     seconds := int(elapsed.Seconds()) % 60
-	fmt.Printf("the total time for net to execute %dk connections, with %d writes per connection, is: %d minutes %d seconds\n", m / 1000, n, minutes, seconds)
+	fmt.Printf("the total time for net to execute %dk connections using 1 goroutines, with %d writes per connection, is: %d minutes and %d seconds\n", m / 1000, n, minutes, seconds)
 }
