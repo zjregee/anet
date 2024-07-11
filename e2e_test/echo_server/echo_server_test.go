@@ -12,7 +12,7 @@ import (
 )
 
 func TestEchoServerSerial(t *testing.T) {
-	port := ":8000"
+	port := ":8001"
 	stopchan := make(chan interface{})
 	runServer(port, stopchan)
 	defer close(stopchan)
@@ -47,7 +47,7 @@ func TestEchoServerSerial(t *testing.T) {
 }
 
 func TestEchoServerConcurrent(t *testing.T) {
-	port := ":8000"
+	port := ":8002"
 	stopchan := make(chan interface{})
 	runServer(port, stopchan)
 	defer close(stopchan)
@@ -109,6 +109,6 @@ func TestEchoServerConcurrent(t *testing.T) {
 
 	err := <- errChan
 	if err != nil {
-		t.Fatalf("error occured")
+		t.Fatalf("error occurred: %v", err)
 	}
 }
