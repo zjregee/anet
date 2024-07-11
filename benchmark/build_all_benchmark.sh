@@ -12,3 +12,6 @@ go build -v -o output/netpoll/bench ./netpoll
 
 mkdir -p output/uring
 go build -v -o output/uring/bench ./uring
+
+mkdir -p output/anet
+go build -v -o output/anet/bench ./anet

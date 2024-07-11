@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-func newBytesBuffer(cap int) ReadWriter {
+func NewBytesBuffer(cap int) ReadWriter {
 	return &bytesBuffer{
 		buffer: make([]byte, 0, cap),
 		start: 0,
@@ -73,7 +73,7 @@ func (b *bytesBuffer) Len() int {
 }
 
 func (b *bytesBuffer) WriteBytes(data []byte, n int) error {
-	if b.end - b.start < n {
+	if b.cap - b.end < n {
 		b.increase()
 	}
 	copy(b.buffer[b.end:b.end + n], data)
@@ -82,7 +82,7 @@ func (b *bytesBuffer) WriteBytes(data []byte, n int) error {
 }
 
 func (b *bytesBuffer) WriteString(data string, n int) error {
-	if b.end - b.start < n {
+	if b.cap - b.end < n {
 		b.increase()
 	}
 	copy(b.buffer[b.end:b.end + n], []byte(data))
@@ -111,6 +111,7 @@ func (b *bytesBuffer) BookAck(n int) error {
 	return nil
 }
 
+// FIXME: We should guarantee increase size > required
 func (b *bytesBuffer) increase() {
 	b.cap *= 2
 	newBuffer := make([]byte, b.end, b.cap)

@@ -6,20 +6,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var log *logrus.Logger
+
+func init() {
+	log = logrus.New()
+	RingManager = newDefaultRingManager(4)
+}
+
 func SetLogger(logger *logrus.Logger) {
-	setLogger(logger)
-}
-
-func SetLoggerLevel(level logrus.Level) {
-	setLoggerLevel(level)
-}
-
-func WithOnConnect(onConnect OnConnect) Option {
-	return Option{
-		f: func(op *options) {
-			op.onConnect = onConnect
-		},
-	}
+	log = logger
 }
 
 func WithReadTimeout(timeout time.Duration) Option {
@@ -43,7 +38,6 @@ type Option struct {
 }
 
 type options struct {
-	onConnect    OnConnect
 	onRequest    OnRequest
 	readTimeout  time.Duration
 	writeTimeout time.Duration

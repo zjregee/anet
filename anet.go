@@ -2,9 +2,11 @@ package anet
 
 import (
 	"net"
-	"sync"
+	"time"
 	"context"
-	// "runtime"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 func CreateListener(network, addr string) (net.Listener, error) {
@@ -19,102 +21,47 @@ func NewEventLoop(onRequest OnRequest, ops ...Option) (EventLoop, error) {
 		do.f(opts)
 	}
 	return &eventLoop{
+		id: uuid.New().String()[:8],
 		opts: opts,
-		stop: make(chan error, 1),
 	}, nil
 }
 
 type EventLoop interface {
 	Serve(ln net.Listener) error
-	ServeNonBlocking(ln net.Listener) error
-	Shutdown() error
-	ShutdownWithContext(ctx context.Context) error
+	Shutdown(ctx context.Context) error
 }
 
 type OnRequest func(ctx context.Context, connection Connection) error
 
-type OnConnect func(ctx context.Context, connection Connection) context.Context
-
-func init() {
-	log = newDefaultLogger()
-	// n := (runtime.GOMAXPROCS(0) - 1) / 20 + 1
-	RingManager = newDefaultRingManager(4)
-}
-
 type eventLoop struct {
-	sync.Mutex
+	id   string
 	opts *options
-	svr  *server
-	stop chan error
+	ln   net.Listener
 }
 
 func (evl *eventLoop) Serve(ln net.Listener) error {
-	evl.Lock()
-	evl.svr = newServer(ln, evl.opts, func(err error) {
-		evl.Lock()
-		if evl.svr == nil {
-			evl.Unlock()
-			return
+	evl.ln = ln
+	for {
+		conn, err := evl.ln.Accept()
+		if err != nil {
+			if strings.Contains(err.Error(), "closed") {
+				log.Warnf("[eventloop %s] eventloop quit since listener closed", evl.id)
+				return nil
+			}
+			log.Warnf("[evetloop %s] listener accepted with error, wait 10 ms for retry", evl.id)
+			time.Sleep(10 * time.Millisecond)
+			continue
 		}
-		evl.svr = nil
-		evl.Unlock()
-		select {
-		case evl.stop <- err:
-		default:
-		}
-	})
-	go evl.svr.run()
-	evl.Unlock()
-
-	err := <-evl.stop
-	if err != nil {
-		log.Error("[EventLoop] error eccoured while serving")
+		go evl.onAccept(conn)
 	}
-	return err
 }
 
-func (evl *eventLoop) ServeNonBlocking(ln net.Listener) error {
-	evl.Lock()
-	evl.svr = newServer(ln, evl.opts, func(err error) {
-		evl.Lock()
-		if evl.svr == nil {
-			evl.Unlock()
-			return
-		}
-		evl.svr = nil
-		evl.Unlock()
-		select {
-		case evl.stop <- err:
-		default:
-		}
-	})
-	go evl.svr.run()
-	evl.Unlock()
-	return nil
+func (evl *eventLoop) onAccept(conn net.Conn) {
+	connection := &connection{}
+	connection.init(conn, evl.opts)
+	connection.run()
 }
 
-func (evl *eventLoop) Shutdown() error {
-	return evl.ShutdownWithContext(context.Background())
-}
-
-func (evl *eventLoop) ShutdownWithContext(ctx context.Context) error {
-	evl.Lock()
-	if evl.svr == nil {
-		evl.Unlock()
-		return nil
-	}
-	svr := evl.svr
-	evl.svr = nil
-	evl.Unlock()
-
-	log.Info("[EventLoop] closed by user")
-	select {
-	case evl.stop <- nil:
-	default:
-	}
-	err := svr.close(ctx)
-	if err != nil {
-		log.Error("[EventLoop] error occurred while closing")
-	}
-	return err
+func (evl *eventLoop) Shutdown(_ context.Context) error {
+	return evl.ln.Close()
 }
