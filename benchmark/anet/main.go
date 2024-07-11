@@ -10,7 +10,6 @@ import (
 	"context"
 
 	"github.com/zjregee/anet"
-	"github.com/zjregee/anet/benchmark/utils"
 )
 
 func runServer(port string, stopChan chan interface{}) {
@@ -86,7 +85,7 @@ func main() {
 				}
 
 				for k := 0; k < n; k++ {
-					message := utils.GetRandomString(messageLength - 1) +  "\n"
+					message := anet.GetRandomString(messageLength - 1) +  "\n"
 					_, err = conn.Write([]byte(message))
 					if err != nil {
 						fmt.Printf("failed to send message: %v\n", err)

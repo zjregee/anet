@@ -1,39 +1,24 @@
 package echoserver
 
 import (
-	"os"
-	"net"
-	"time"
 	"bufio"
+	"net"
+	"sync"
+	"errors"
 	"testing"
-	"math/rand"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/zjregee/anet"
 )
-
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-func randomString(length int) string {
-	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seed.Intn(len(charset))]
-	}
-	return string(b)
-}
 
 func TestEchoServerSerial(t *testing.T) {
 	port := ":8000"
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.WarnLevel)
 	stopchan := make(chan interface{})
-	runServer(port, stopchan, logger)
+	runServer(port, stopchan)
 	defer close(stopchan)
 
-	m := 1
-	n := 10
+	m := 1000
+	n := 100
 	messageLength := 48
 
 	for i := 0; i < m ; i++ {
@@ -43,7 +28,7 @@ func TestEchoServerSerial(t *testing.T) {
 		}
 
 		for j := 0; j < n; j++ {
-			message := randomString(messageLength) +  "\n"
+			message := anet.GetRandomString(messageLength - 1) +  "\n"
 			_, err = conn.Write([]byte(message))
 			if err != nil {
 				t.Fatalf("failed to send message: %v", err)
@@ -58,5 +43,72 @@ func TestEchoServerSerial(t *testing.T) {
 		}
 
 		conn.Close()
+	}
+}
+
+func TestEchoServerConcurrent(t *testing.T) {
+	port := ":8000"
+	stopchan := make(chan interface{})
+	runServer(port, stopchan)
+	defer close(stopchan)
+
+	c := 12
+	m := 1000
+	n := 100
+	messageLength := 48
+
+	errChan := make(chan error)
+
+	var wg sync.WaitGroup
+	for i := 0; i < c; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			for j := 0; j < m; j++ {
+				conn, err := net.Dial("tcp", port)
+				if err != nil {
+					select {
+					case errChan <- errors.New("failed to connect to server"):
+					default:
+					}
+					return
+				}
+
+				for k := 0; k < n; k++ {
+					message := anet.GetRandomString(messageLength - 1) +  "\n"
+					_, err = conn.Write([]byte(message))
+					if err != nil {
+						select {
+						case errChan <- errors.New("failed to send message"):
+						default:
+						}
+						return
+					}
+
+					response, err := bufio.NewReader(conn).ReadString('\n')
+					if err != nil {
+						select {
+						case errChan <- errors.New("failed to read response"):
+						default:
+						}
+						return
+					}
+
+					require.Equal(t, message, response)
+				}
+
+				conn.Close()
+			}
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	err := <- errChan
+	if err != nil {
+		t.Fatalf("error occured")
 	}
 }

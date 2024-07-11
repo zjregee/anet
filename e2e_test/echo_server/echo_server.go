@@ -4,41 +4,42 @@ import (
 	"context"
 
 	"github.com/zjregee/anet"
-	"github.com/sirupsen/logrus"
 )
 
-func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
-	anet.SetLogger(logger)
-
+func runServer(port string, stopChan chan interface{}) {
 	listener, err := anet.CreateListener("tcp", port)
 	if err != nil {
 		panic("shouldn't failed here")
 	}
+
 	eventLoop, err := anet.NewEventLoop(handleConnection)
 	if err != nil {
 		panic("shouldn't failed here")
 	}
-	eventLoop.ServeNonBlocking(listener)
+	go eventLoop.Serve(listener)
 
 	go func() {
 		<- stopChan
-		eventLoop.Shutdown()
+		eventLoop.Shutdown(context.Background())
+		listener.Close()
 	}()
 }
 
-func handleConnection(ctx context.Context, connection anet.Connection) error {
+func handleConnection(_ context.Context, connection anet.Connection) error {
 	reader, writer := connection.Reader(), connection.Writer()
-	data, err := reader.ReadAll();
-	if err != nil {
-		return err
+
+	for {
+		data, err := reader.ReadUtil(1);
+		if err != nil {
+			return err
+		}
+		err = writer.WriteBytes(data, len(data));
+		if err != nil {
+			return err
+		}
+		err = writer.Flush()
+		if err != nil {
+			return err
+		}
 	}
-	err = writer.WriteBytes(data, len(data));
-	if err != nil {
-		return err
-	}
-	err = writer.Flush()
-	if err != nil {
-		return err
-	}
-	return nil
 }
