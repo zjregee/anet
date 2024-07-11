@@ -1,18 +1,17 @@
 package main
 
 import (
-	"os"
 	"net"
 	"fmt"
 	"time"
 	"sync"
+	"flag"
 	"bufio"
-	"math/rand"
 
-	"github.com/sirupsen/logrus"
+	"github.com/zjregee/anet/benchmark/utils"
 )
 
-func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
+func runServer(port string, stopChan chan interface{}) {
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		panic("shouldn't failed here")
@@ -22,10 +21,9 @@ func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
-				logger.Warnf("error occurred when accept: %s", err.Error())
 				continue
 			}
-			handleConnection(conn, logger)
+			go handleConnection(conn)
 		}
 	}()
 
@@ -35,36 +33,46 @@ func runServer(port string, stopChan chan interface{}, logger *logrus.Logger) {
 	}()
 }
 
-func handleConnection(conn net.Conn, logger *logrus.Logger) {
-	connection := connection{}
-	connection.init(conn, logger)
-	go connection.run()
-}
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 
-func randomString(length int) string {
-	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seed.Intn(len(charset))]
+	for {
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		_, err = writer.WriteString(message)
+		if err != nil {
+			return
+		}
+		err = writer.Flush()
+		if err != nil {
+			return
+		}
 	}
-	return string(b)
 }
 
 func main() {
 	port := ":8000"
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.InfoLevel)
 	stopchan := make(chan interface{})
-	runServer(port, stopchan, logger)
+	runServer(port, stopchan)
 	defer close(stopchan)
 
-	c := 12
-	m := 1000
-	n := 100
-	messageLength := 48
+	var (
+		c int
+		m int
+		n int
+		messageLength int
+	)
+
+	flag.IntVar(&c, "c", 12, "")
+	flag.IntVar(&m, "m", 1000, "")
+	flag.IntVar(&n, "n", 100, "")
+	flag.IntVar(&messageLength, "len", 48, "")
+    flag.Parse()
 
 	start := time.Now()
 
@@ -82,7 +90,7 @@ func main() {
 				}
 
 				for k := 0; k < n; k++ {
-					message := randomString(messageLength) +  "\n"
+					message := utils.GetRandomString(messageLength - 1) +  "\n"
 					_, err = conn.Write([]byte(message))
 					if err != nil {
 						fmt.Printf("failed to send message: %v\n", err)
@@ -112,5 +120,6 @@ func main() {
 	elapsed := time.Since(start)
 	minutes := int(elapsed.Minutes())
     seconds := int(elapsed.Seconds()) % 60
-	fmt.Printf("the total time for uring to execute %dk connections using %d goroutines, with %d writes per connection, is: %d minutes and %d seconds\n", c * m / 1000, c, n, minutes, seconds)
+	milliseconds := int(elapsed.Milliseconds() % 1000)
+	fmt.Printf("the total time for net to execute %dk connections using %d goroutines, with %d writes per connection and %d bytes per write, is: %d min %d sec %d ms\n", c * m / 1000, c, n, messageLength, minutes, seconds, milliseconds)
 }

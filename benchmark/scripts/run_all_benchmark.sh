@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 
-./net/bench_serial
-./net/bench_concurrent
-./netpoll/bench_serial
-./netpoll/bench_concurrent
-./uring/bench_serial
-./uring/bench_concurrent
+./net/bench -c=12 -m=1000 -n=100 -len=256
+./net/bench -c=24 -m=1000 -n=100 -len=256
+./net/bench -c=36 -m=1000 -n=100 -len=256
+./net/bench -c=12 -m=1000 -n=100 -len=1024
+./net/bench -c=24 -m=1000 -n=100 -len=1024
+./net/bench -c=36 -m=1000 -n=100 -len=1024
+
+./netpoll/bench -c=12 -m=1000 -n=100 -len=256
+./netpoll/bench -c=24 -m=1000 -n=100 -len=256
+./netpoll/bench -c=36 -m=1000 -n=100 -len=256
+./netpoll/bench -c=12 -m=1000 -n=100 -len=1024
+./netpoll/bench -c=24 -m=1000 -n=100 -len=1024
+./netpoll/bench -c=36 -m=1000 -n=100 -len=1024
+
+./uring/bench -c=12 -m=1000 -n=100 -len=256
+./uring/bench -c=24 -m=1000 -n=100 -len=256
+./uring/bench -c=36 -m=1000 -n=100 -len=256
+./uring/bench -c=12 -m=1000 -n=100 -len=1024
+./uring/bench -c=24 -m=1000 -n=100 -len=1024
+./uring/bench -c=36 -m=1000 -n=100 -len=1024

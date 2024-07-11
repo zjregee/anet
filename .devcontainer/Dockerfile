@@ -12,6 +12,3 @@ RUN git clone https://github.com/axboe/liburing.git && \
     make install && \
     cd ../ && \
     rm -rf liburing
-
-RUN go env -w GO111MODULE=on && \
-    go env -w GOPROXY=https://goproxy.cn,direct
