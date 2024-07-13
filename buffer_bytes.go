@@ -25,7 +25,7 @@ var _ Writer     = &bytesBuffer{}
 var _ ReadWriter = &bytesBuffer{}
 
 func (b *bytesBuffer) Seek(n int) ([]byte, error) {
-	if b.end - b.start < n {
+	if b.Len() < n {
 		return nil, errors.New("not enough data in buffer")
 	}
 	data := b.buffer[b.start:b.start + n]
@@ -33,25 +33,31 @@ func (b *bytesBuffer) Seek(n int) ([]byte, error) {
 }
 
 func (b *bytesBuffer) SeekAck(n int) error {
-	if b.end - b.start < n {
+	if b.Len() < n {
 		return errors.New("not enough data in buffer")
 	}
 	b.start += n
 	return nil
 }
 
-func (b *bytesBuffer) ReadAll() ([]byte, error) {
+func (b *bytesBuffer) SeekAll() ([]byte, error) {
 	data := b.buffer[b.start:b.end]
-	b.start = b.end
 	return data, nil
 }
 
-func (b *bytesBuffer) ReadUtil(n int) ([]byte, error) {
+func (b *bytesBuffer) ReadAll() ([]byte, error) {
+	data := b.buffer[b.start:b.end]
+	b.start = 0
+	b.end = 0
+	return data, nil
+}
+
+func (b *bytesBuffer) ReadUtil(delim byte) ([]byte, error) {
 	panic("unreachable code")
 }
 
 func (b *bytesBuffer) ReadBytes(n int) ([]byte, error) {
-	if b.end - b.start < n {
+	if b.Len() < n {
 		return nil, errors.New("not enough data in buffer")
 	}
 	data := b.buffer[b.start:b.start + n]
@@ -60,7 +66,7 @@ func (b *bytesBuffer) ReadBytes(n int) ([]byte, error) {
 }
 
 func (b *bytesBuffer) ReadString(n int) (string, error) {
-	if b.end - b.start < n {
+	if b.Len() < n {
 		return "", errors.New("not enough data in buffer")
 	}
 	data := b.buffer[b.start:b.start + n]
@@ -72,9 +78,24 @@ func (b *bytesBuffer) Len() int {
 	return b.end - b.start
 }
 
+func (b *bytesBuffer) Book(n int) []byte {
+	if b.remain() < n {
+		b.increase(n)
+	}
+	return b.buffer[b.end:b.end + n]
+}
+
+func (b *bytesBuffer) BookAck(n int) error {
+	if b.remain() < n {
+		return errors.New("not enough space in buffer")
+	}
+	b.end += n
+	return nil
+}
+
 func (b *bytesBuffer) WriteBytes(data []byte, n int) error {
-	if b.cap - b.end < n {
-		b.increase()
+	if b.remain() < n {
+		b.increase(n)
 	}
 	copy(b.buffer[b.end:b.end + n], data)
 	b.end += n
@@ -82,8 +103,8 @@ func (b *bytesBuffer) WriteBytes(data []byte, n int) error {
 }
 
 func (b *bytesBuffer) WriteString(data string, n int) error {
-	if b.cap - b.end < n {
-		b.increase()
+	if b.remain() < n {
+		b.increase(n)
 	}
 	copy(b.buffer[b.end:b.end + n], []byte(data))
 	b.end += n
@@ -91,32 +112,22 @@ func (b *bytesBuffer) WriteString(data string, n int) error {
 }
 
 func (b *bytesBuffer) Flush() error {
-	b.start = 0
-	b.end = 0
-	return nil
+	panic("unreachable code")
 }
 
-func (b *bytesBuffer) Book(n int) []byte {
-	if b.cap - b.end < n {
-		b.increase()
+func (b *bytesBuffer) increase(n int) {
+	if b.cap < n {
+		b.cap = n * 2
+	} else {
+		b.cap = b.cap * 2
 	}
-	return b.buffer[b.end:b.end + n]
-}
-
-func (b *bytesBuffer) BookAck(n int) error {
-	if b.cap - b.end < n {
-		return errors.New("not enough space in buffer")
-	}
-	b.end += n
-	return nil
-}
-
-// FIXME: We should guarantee increase size > required
-func (b *bytesBuffer) increase() {
-	b.cap *= 2
 	newBuffer := make([]byte, b.end, b.cap)
 	copy(newBuffer, b.buffer[b.start:b.end])
 	b.buffer = newBuffer
 	b.end -= b.start
 	b.start = 0
+}
+
+func (b *bytesBuffer) remain() int {
+	return b.cap - b.end
 }

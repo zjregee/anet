@@ -35,7 +35,7 @@ func handleConnection(_ context.Context, connection anet.Connection) error {
 	reader, writer := connection.Reader(), connection.Writer()
 
 	for {
-		data, err := reader.ReadUtil(1);
+		data, err := reader.ReadUtil('\n');
 		if err != nil {
 			return err
 		}

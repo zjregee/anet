@@ -45,25 +45,16 @@ func (c *connection) SeekAck(n int) error {
 	return c.inputBuffer.SeekAck(n)
 }
 
+func (c *connection) SeekAll() ([]byte, error) {
+	return c.inputBuffer.SeekAll()
+}
+
 func (c *connection) ReadAll() ([]byte, error) {
 	return c.inputBuffer.ReadAll()
 }
 
-// FIXME: We should let ReadUtil wait for delim, not a specific number of bytes.
-func (c *connection) ReadUtil(n int) ([]byte, error) {
-	if c.inputBuffer.Len() >= n {
-		return c.inputBuffer.ReadBytes(n)
-	}
-	var err error
-	if c.readTimeout != 0 {
-		err = c.waitReadWithTimeout(n, c.readTimeout)
-	} else {
-		err = c.waitRead(n)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return c.inputBuffer.ReadAll()
+func (c *connection) ReadUtil(delim byte) ([]byte, error) {
+	return c.waitReadUntil(delim)
 }
 
 func (c *connection) ReadBytes(n int) ([]byte, error) {
@@ -205,6 +196,36 @@ func (c *connection) waitRead(n int) error {
 		}
 	}
 	return nil
+}
+
+func (c *connection) waitReadUntil(delim byte) ([]byte, error) {
+	for {
+		if c.inputBuffer.Len() > 0 {
+			data, err := c.inputBuffer.SeekAll()
+			if err != nil {
+				return nil, err
+			}
+			index := -1
+			for i, b := range data {
+				if b == delim {
+					index = i
+					break
+				}
+			}
+			if index != -1 {
+				c.inputBuffer.SeekAck(index + 1)
+				return data[:index + 1], nil
+			}
+		}
+		c.submitRead()
+		err := <-c.readTrigger
+		if err != nil {
+			return nil, err
+		}
+		if c.inputBuffer.Len() == 0 {
+			return nil, errors.New("EOF")
+		}
+	}
 }
 
 func (c *connection) waitFlush() error {

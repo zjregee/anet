@@ -3,8 +3,9 @@ package anet
 type Reader interface {
 	Seek(n int) ([]byte, error)
 	SeekAck(n int) error
+	SeekAll() ([]byte, error)
 	ReadAll() ([]byte, error)
-	ReadUtil(n int) ([]byte, error)
+	ReadUtil(delim byte) ([]byte, error)
 	ReadBytes(n int) ([]byte, error)
 	ReadString(n int) (string, error)
 	Len() int
