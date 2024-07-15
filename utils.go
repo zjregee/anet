@@ -1,8 +1,8 @@
 package anet
 
 import (
-	"time"
 	"math/rand"
+	"time"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

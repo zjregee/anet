@@ -1,18 +1,18 @@
 package main
 
 import (
-	"os"
 	"context"
+	"os"
 
-	"github.com/zjregee/anet"
 	"github.com/sirupsen/logrus"
+	"github.com/zjregee/anet"
 )
 
 func main() {
 	logger := logrus.New()
 	logFile := os.Getenv("ANET_RUNTIME_LOG_FILE")
 	if logFile != "" {
-		file, err := os.OpenFile(logFile, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0644)
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			panic("shouldn't failed here")
 		}
@@ -31,18 +31,18 @@ func main() {
 	if err != nil {
 		panic("shouldn't failed here")
 	}
-	_  = eventLoop.Serve(listener)
+	_ = eventLoop.Serve(listener)
 }
 
 func handleConnection(_ context.Context, connection anet.Connection) error {
 	reader, writer := connection.Reader(), connection.Writer()
 
 	for {
-		data, err := reader.ReadUtil(1);
+		data, err := reader.ReadUtil(1)
 		if err != nil {
 			return err
 		}
-		err = writer.WriteBytes(data, len(data));
+		err = writer.WriteBytes(data, len(data))
 		if err != nil {
 			return err
 		}

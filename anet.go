@@ -1,10 +1,10 @@
 package anet
 
 import (
-	"net"
-	"time"
 	"context"
+	"net"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -21,7 +21,7 @@ func NewEventLoop(onRequest OnRequest, ops ...Option) (EventLoop, error) {
 		do.f(opts)
 	}
 	return &eventLoop{
-		id: uuid.New().String()[:8],
+		id:   uuid.New().String()[:8],
 		opts: opts,
 	}, nil
 }

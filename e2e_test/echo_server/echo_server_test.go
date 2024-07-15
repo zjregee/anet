@@ -2,9 +2,9 @@ package echoserver
 
 import (
 	"bufio"
+	"errors"
 	"net"
 	"sync"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,14 +21,14 @@ func TestEchoServerSerial(t *testing.T) {
 	n := 100
 	messageLength := 48
 
-	for i := 0; i < m ; i++ {
+	for i := 0; i < m; i++ {
 		conn, err := net.Dial("tcp", port)
 		if err != nil {
 			t.Fatalf("failed to connect to server: %v", err)
 		}
 
 		for j := 0; j < n; j++ {
-			message := anet.GetRandomString(messageLength - 1) +  "\n"
+			message := anet.GetRandomString(messageLength-1) + "\n"
 			_, err = conn.Write([]byte(message))
 			if err != nil {
 				t.Fatalf("failed to send message: %v", err)
@@ -75,7 +75,7 @@ func TestEchoServerConcurrent(t *testing.T) {
 				}
 
 				for k := 0; k < n; k++ {
-					message := anet.GetRandomString(messageLength - 1) +  "\n"
+					message := anet.GetRandomString(messageLength-1) + "\n"
 					_, err = conn.Write([]byte(message))
 					if err != nil {
 						select {
@@ -107,7 +107,7 @@ func TestEchoServerConcurrent(t *testing.T) {
 		close(errChan)
 	}()
 
-	err := <- errChan
+	err := <-errChan
 	if err != nil {
 		t.Fatalf("error occurred: %v", err)
 	}

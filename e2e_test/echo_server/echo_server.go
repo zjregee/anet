@@ -19,7 +19,7 @@ func runServer(port string, stopChan chan interface{}) {
 	go eventLoop.Serve(listener)
 
 	go func() {
-		<- stopChan
+		<-stopChan
 		eventLoop.Shutdown(context.Background())
 		listener.Close()
 	}()
@@ -29,11 +29,11 @@ func handleConnection(_ context.Context, connection anet.Connection) error {
 	reader, writer := connection.Reader(), connection.Writer()
 
 	for {
-		data, err := reader.ReadUtil('\n');
+		data, err := reader.ReadUtil('\n')
 		if err != nil {
 			return err
 		}
-		err = writer.WriteBytes(data, len(data));
+		err = writer.WriteBytes(data, len(data))
 		if err != nil {
 			return err
 		}

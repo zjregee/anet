@@ -24,5 +24,5 @@ func (op *FDOperator) Reset() {
 	op.FD = 0
 	op.OnRead = nil
 	op.OnWrite = nil
-	op.Ring = nil	
+	op.Ring = nil
 }

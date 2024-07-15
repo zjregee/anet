@@ -56,7 +56,7 @@ func (m *manager) Run() error {
 			log.Warnf("error occurred while open ring")
 		} else {
 			go ring.Wait()
-			rings = append(rings, ring)	
+			rings = append(rings, ring)
 		}
 	}
 	m.rings = rings

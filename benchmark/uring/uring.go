@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"net"
+	"os"
 
 	"github.com/zjregee/anet"
 )
@@ -64,7 +64,7 @@ func (c *connection) run() {
 			return
 		}
 
-		if (c.size == 0) {
+		if c.size == 0 {
 			return
 		}
 

@@ -29,8 +29,8 @@ type connection struct {
 	state             int32 // 0: connected, 1: closed
 }
 
-var _ Reader     = &connection{}
-var _ Writer     = &connection{}
+var _ Reader = &connection{}
+var _ Writer = &connection{}
 var _ ReadWriter = &connection{}
 
 func (c *connection) ID() string {
@@ -185,7 +185,7 @@ func (c *connection) waitRead(n int) error {
 	if c.inputBuffer.Len() >= n {
 		return nil
 	}
-	for (c.inputBuffer.Len() < n) {
+	for c.inputBuffer.Len() < n {
 		c.submitRead()
 		err := <-c.readTrigger
 		if err != nil {
@@ -214,7 +214,7 @@ func (c *connection) waitReadUntil(delim byte) ([]byte, error) {
 			}
 			if index != -1 {
 				c.inputBuffer.SeekAck(index + 1)
-				return data[:index + 1], nil
+				return data[:index+1], nil
 			}
 		}
 		c.submitRead()
@@ -232,9 +232,9 @@ func (c *connection) waitFlush() error {
 	if c.outputBuffer.Len() == 0 {
 		return nil
 	}
-	for (c.outputBuffer.Len() > 0) {
+	for c.outputBuffer.Len() > 0 {
 		c.submitWrite()
-		err := <- c.writeTrigger
+		err := <-c.writeTrigger
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (c *connection) waitReadWithTimeout(n int, timeout time.Duration) error {
 	atomic.StoreInt32(&c.waitReadSize, int32(n))
 	defer atomic.StoreInt32(&c.waitReadSize, 0)
 	timer := time.NewTimer(timeout)
-	for (c.inputBuffer.Len() < n) {
+	for c.inputBuffer.Len() < n {
 		select {
 		case err := <-c.readTrigger:
 			if err != nil {
@@ -267,7 +267,7 @@ func (c *connection) waitFlushWithTimeout(timeout time.Duration) error {
 		return nil
 	}
 	timer := time.NewTimer(timeout)
-	for (c.outputBuffer.Len() > 0) {
+	for c.outputBuffer.Len() > 0 {
 		select {
 		case err := <-c.writeTrigger:
 			if err != nil {

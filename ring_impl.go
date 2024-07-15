@@ -8,8 +8,8 @@ import "C"
 
 import (
 	"sync"
-	"unsafe"
 	"syscall"
+	"unsafe"
 
 	"github.com/google/uuid"
 )
