@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DEFAULT_RING_SIZE = 24
+	DEFAULT_RING_SIZE = 1024
 )
 
 func newDefaultRing() (Ring, error) {
