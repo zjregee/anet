@@ -39,6 +39,7 @@ func handleConnection(_ context.Context, connection anet.Connection) error {
 		if err != nil {
 			return err
 		}
+		reader.Release()
 		err = writer.WriteBytes(data, len(data))
 		if err != nil {
 			return err

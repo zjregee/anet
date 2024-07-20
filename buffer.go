@@ -9,6 +9,7 @@ type Reader interface {
 	ReadBytes(n int) ([]byte, error)
 	ReadString(n int) (string, error)
 	Len() int
+	Release()
 }
 
 type Writer interface {

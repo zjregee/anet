@@ -1,27 +1,23 @@
-the total time for net to execute 2000k connections using 4 goroutines, with 1024 bytes per write, is: 0 min 7 sec 254 ms
-the total time for net to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 5 sec 219 ms
-the total time for net to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 3 sec 816 ms
-the total time for net to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 3 sec 534 ms
-the total time for net to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 2 sec 907 ms
-the total time for net to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 3 sec 195 ms
+the total time for net to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 4 sec 59 ms
+the total time for net to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 3 sec 884 ms
+the total time for net to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 3 sec 563 ms
+the total time for net to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 3 sec 30 ms
+the total time for net to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 3 sec 298 ms
 
-the total time for netpoll to execute 2000k connections using 4 goroutines, with 1024 bytes per write, is: 0 min 7 sec 821 ms
-the total time for netpoll to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 4 sec 67 ms
-the total time for netpoll to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 2 sec 67 ms
-the total time for netpoll to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 2 sec 31 ms
-the total time for netpoll to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 2 sec 208 ms
-the total time for netpoll to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 2 sec 906 ms
+the total time for netpoll to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 3 sec 728 ms
+the total time for netpoll to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 2 sec 78 ms
+the total time for netpoll to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 2 sec 43 ms
+the total time for netpoll to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 2 sec 193 ms
+the total time for netpoll to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 2 sec 948 ms
 
-the total time for uring to execute 2000k connections using 4 goroutines, with 1024 bytes per write, is: 0 min 10 sec 390 ms
-the total time for uring to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 5 sec 451 ms
-the total time for uring to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 4 sec 691 ms
-the total time for uring to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 5 sec 188 ms
-the total time for uring to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 4 sec 616 ms
-the total time for uring to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 4 sec 806 ms
+the total time for uring to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 7 sec 148 ms
+the total time for uring to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 4 sec 358 ms
+the total time for uring to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 4 sec 801 ms
+the total time for uring to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 4 sec 280 ms
+the total time for uring to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 4 sec 424 ms
 
-the total time for anet to execute 2000k connections using 4 goroutines, with 1024 bytes per write, is: 0 min 10 sec 27 ms
-the total time for anet to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 4 sec 525 ms
-the total time for anet to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 3 sec 494 ms
-the total time for anet to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 3 sec 534 ms
-the total time for anet to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 3 sec 740 ms
-the total time for anet to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 4 sec 369 ms
+the total time for anet to execute 2000k connections using 12 goroutines, with 1024 bytes per write, is: 0 min 6 sec 391 ms
+the total time for anet to execute 2000k connections using 64 goroutines, with 1024 bytes per write, is: 0 min 3 sec 158 ms
+the total time for anet to execute 2000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 2 sec 880 ms
+the total time for anet to execute 2000k connections using 512 goroutines, with 1024 bytes per write, is: 0 min 2 sec 890 ms
+the total time for anet to execute 2000k connections using 1024 goroutines, with 1024 bytes per write, is: 0 min 3 sec 600 ms

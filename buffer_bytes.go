@@ -78,6 +78,19 @@ func (b *bytesBuffer) Len() int {
 	return b.end - b.start
 }
 
+func (b *bytesBuffer) Release() {
+	if b.start == b.end {
+		b.start = 0
+		b.end = 0
+		return
+	}
+	if b.start > 0 {
+		copy(b.buffer, b.buffer[b.start:b.end])
+		b.end -= b.start
+		b.start = 0
+	}
+}
+
 func (b *bytesBuffer) Book(n int) []byte {
 	if b.remain() < n {
 		b.increase(n)

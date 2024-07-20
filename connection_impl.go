@@ -93,6 +93,10 @@ func (c *connection) Len() int {
 	return c.inputBuffer.Len()
 }
 
+func (c *connection) Release() {
+	c.inputBuffer.Release()
+}
+
 func (c *connection) WriteBytes(data []byte, n int) error {
 	err := c.outputBuffer.WriteBytes(data, n)
 	return err

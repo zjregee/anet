@@ -9,13 +9,15 @@ import "C"
 import (
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/google/uuid"
 )
 
 const (
-	DEFAULT_RING_SIZE = 1024
+	DEFAULT_RING_SIZE  = 1024
+	DEFAULT_BATCH_SIZE = 32
 )
 
 func newDefaultRing() (Ring, error) {
@@ -28,6 +30,7 @@ func newDefaultRing() (Ring, error) {
 			return &FDOperator{}
 		},
 	}
+	ring.num = 0
 	return ring, nil
 }
 
@@ -50,6 +53,8 @@ type defaultRing struct {
 	opcache sync.Pool
 	ring    C.struct_io_uring
 	ch      chan RingEventData
+	num     int
+	mu      sync.Mutex
 }
 
 func (r *defaultRing) Id() string {
@@ -58,45 +63,19 @@ func (r *defaultRing) Id() string {
 
 func (r *defaultRing) Wait() error {
 	go r.submitLoop()
+	go r.loop()
 
 	var cqe *C.struct_io_uring_cqe
+	cqes := make([]*C.struct_io_uring_cqe, DEFAULT_BATCH_SIZE)
 	for {
 		C.io_uring_wait_cqe(&r.ring, &cqe)
 		if cqe == nil {
 			continue
 		}
-		C.io_uring_cqe_seen(&r.ring, cqe)
-
-		userData := uint64(cqe.user_data)
-		event, fd := decodeUserData(userData)
-		operator := r.getOperator(fd)
-		switch event {
-		case RingPrepRead:
-			if cqe.res < 0 {
-				errno := syscall.Errno(-cqe.res)
-				if errno == syscall.EAGAIN {
-					log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
-					continue
-				} else {
-					operator.OnRead(int(cqe.res), errno)
-				}
-			} else {
-				operator.OnRead(int(cqe.res), nil)
-			}
-		case RingPrepWrite:
-			if cqe.res < 0 {
-				errno := syscall.Errno(-cqe.res)
-				if errno == syscall.EAGAIN {
-					log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
-					continue
-				} else {
-					operator.OnWrite(int(cqe.res), errno)
-				}
-			} else {
-				operator.OnWrite(int(cqe.res), nil)
-			}
-		default:
-			log.Warnf("[ring %s] unsupported RingEvent", r.id)
+		r.handleEvent(cqe)
+		count := C.io_uring_peek_batch_cqe(&r.ring, &cqes[0], DEFAULT_BATCH_SIZE)
+		for i := 0; i < int(count); i++ {
+			r.handleEvent(cqes[i])
 		}
 	}
 }
@@ -125,6 +104,7 @@ func (r *defaultRing) Register(operator *FDOperator) {
 
 func (r *defaultRing) submitLoop() {
 	for eventData := range r.ch {
+		r.mu.Lock()
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
 			panic("can't failed here")
@@ -141,7 +121,59 @@ func (r *defaultRing) submitLoop() {
 		default:
 			panic("can't failed here")
 		}
-		C.io_uring_submit(&r.ring)
+		r.num += 1
+		if r.num > 10 {
+			C.io_uring_submit(&r.ring)
+			r.num = 0
+		}
+		r.mu.Unlock()
+	}
+}
+
+func (r *defaultRing) loop() {
+	for {
+		time.Sleep(time.Microsecond)
+		r.mu.Lock()
+		if r.num > 0 {
+			C.io_uring_submit(&r.ring)
+			r.num = 0
+		}
+		r.mu.Unlock()
+	}
+}
+
+func (r *defaultRing) handleEvent(cqe *C.struct_io_uring_cqe) {
+	C.io_uring_cqe_seen(&r.ring, cqe)
+	userData := uint64(cqe.user_data)
+	event, fd := decodeUserData(userData)
+	operator := r.getOperator(fd)
+	switch event {
+	case RingPrepRead:
+		if cqe.res < 0 {
+			errno := syscall.Errno(-cqe.res)
+			if errno == syscall.EAGAIN {
+				log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
+				time.Sleep(time.Millisecond * 10)
+			} else {
+				operator.OnRead(int(cqe.res), errno)
+			}
+		} else {
+			operator.OnRead(int(cqe.res), nil)
+		}
+	case RingPrepWrite:
+		if cqe.res < 0 {
+			errno := syscall.Errno(-cqe.res)
+			if errno == syscall.EAGAIN {
+				log.Warnf("[ring %s] error occurred while waiting, wait 10ms to retry: %s", r.id, errno.Error())
+				time.Sleep(time.Millisecond * 10)
+			} else {
+				operator.OnWrite(int(cqe.res), errno)
+			}
+		} else {
+			operator.OnWrite(int(cqe.res), nil)
+		}
+	default:
+		log.Warnf("[ring %s] unsupported RingEvent", r.id)
 	}
 }
 
