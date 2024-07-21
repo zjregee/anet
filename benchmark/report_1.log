@@ -1,0 +1,4 @@
+the total time for net to execute 10000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 17 sec 705 ms
+the total time for netpoll to execute 10000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 17 sec 271 ms
+the total time for uring to execute 10000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 22 sec 44 ms
+the total time for anet to execute 10000k connections using 128 goroutines, with 1024 bytes per write, is: 0 min 23 sec 43 ms

@@ -11,7 +11,7 @@ func newDefaultRingManager(n int) *manager {
 	ringmanager.balance = &roundRobinLB{}
 	err := ringmanager.Run()
 	if err != nil {
-		panic("can't failed here")
+		panic("should't failed here")
 	}
 	return ringmanager
 }

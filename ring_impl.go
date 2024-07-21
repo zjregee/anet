@@ -107,7 +107,7 @@ func (r *defaultRing) submitLoop() {
 		r.mu.Lock()
 		sqe := C.io_uring_get_sqe(&r.ring)
 		if sqe == nil {
-			panic("can't failed here")
+			panic("should't failed here")
 		}
 		switch eventData.Event {
 		case RingPrepRead:
@@ -119,10 +119,10 @@ func (r *defaultRing) submitLoop() {
 			sqe.user_data = C.ulonglong(userData)
 			C.io_uring_prep_write(sqe, C.int(eventData.Operator.FD), unsafe.Pointer(&eventData.Data[0]), C.uint(eventData.Size), 0)
 		default:
-			panic("can't failed here")
+			panic("should't failed here")
 		}
 		r.num += 1
-		if r.num > 10 {
+		if r.num >= 10 {
 			C.io_uring_submit(&r.ring)
 			r.num = 0
 		}

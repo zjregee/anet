@@ -4,6 +4,8 @@ rm -rf output/
 mkdir output
 cp scripts/* output/
 
+go build -v -o output/bencher ./bencher
+
 mkdir -p output/net
 go build -v -o output/net/bench ./net
 
