@@ -7,3 +7,4 @@ mkdir -p output/log
 cp scripts/* output/
 
 go build -v -o output/bin/tcp_server ./tcp_server
+go build -v -o output/bin/http_server ./http_server

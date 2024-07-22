@@ -3,6 +3,7 @@ package anet
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"sync/atomic"
@@ -32,6 +33,8 @@ type connection struct {
 var _ Reader = &connection{}
 var _ Writer = &connection{}
 var _ ReadWriter = &connection{}
+var _ io.Reader = &connection{}
+var _ io.Writer = &connection{}
 
 func (c *connection) ID() string {
 	return c.id
@@ -124,6 +127,56 @@ func (c *connection) Book(n int) []byte {
 func (c *connection) BookAck(n int) error {
 	err := c.outputBuffer.BookAck(n)
 	return err
+}
+
+func (c *connection) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if c.inputBuffer.Len() != 0 {
+		if c.inputBuffer.Len() > len(p) {
+			data, err := c.inputBuffer.ReadBytes(len(p))
+			if err != nil {
+				return 0, err
+			}
+			n := copy(p, data)
+			return n, nil
+		} else {
+			data, err := c.inputBuffer.ReadAll()
+			if err != nil {
+				return 0, err
+			}
+			n := copy(p, data)
+			return n, nil
+		}
+	}
+	err := c.waitRead(1)
+	if err != nil {
+		return 0, nil
+	}
+	if c.inputBuffer.Len() > len(p) {
+		data, err := c.inputBuffer.ReadBytes(len(p))
+		if err != nil {
+			return 0, err
+		}
+		n := copy(p, data)
+		return n, nil
+	} else {
+		data, err := c.inputBuffer.ReadAll()
+		if err != nil {
+			return 0, err
+		}
+		n := copy(p, data)
+		return n, nil
+	}
+}
+
+func (c *connection) Write(p []byte) (int, error) {
+	err := c.outputBuffer.WriteBytes(p, len(p))
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 func (c *connection) Reader() Reader {
