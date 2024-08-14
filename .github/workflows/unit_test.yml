@@ -1,4 +1,4 @@
-name: Go E2E Test
+name: Go Unit Test
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: E2E Test
+    name: Unit Test
     runs-on: ubuntu-latest
 
     steps:
@@ -26,4 +26,6 @@ jobs:
           go mod tidy
 
       - name: Run Tests
-        run: go test -v ./e2e_test/...
+        run: |
+          go test -v .
+          go test -v ./ahttp

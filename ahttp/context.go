@@ -1,71 +1,31 @@
 package ahttp
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 )
 
-func newContext() *Context {
-	return &Context{}
+func newContext(r *http.Request, w http.ResponseWriter) *Context {
+	return &Context{
+		request:  r,
+		response: newResponse(w),
+	}
 }
 
 type Context struct {
 	request  *http.Request
-	response http.ResponseWriter
+	response *Response
 	query    url.Values
 	handler  HandlerFunc
-	path     string
-	pnames   []string
-	pvalues  []string
 }
 
 func (c *Context) Request() *http.Request {
 	return c.request
 }
 
-func (c *Context) SetRequest(r *http.Request) {
-	c.request = r
-}
-
-func (c *Context) Response() http.ResponseWriter {
+func (c *Context) Response() *Response {
 	return c.response
-}
-
-func (c *Context) SetResponse(r http.ResponseWriter) {
-	c.response = r
-}
-
-func (c *Context) Path() string {
-	return c.path
-}
-
-func (c *Context) SetPath(p string) {
-	c.path = p
-}
-
-func (c *Context) Param(name string) string {
-	for i, n := range c.pnames {
-		if i < len(c.pvalues) && n == name {
-			return c.pvalues[i]
-		}
-	}
-	return ""
-}
-
-func (c *Context) ParamNames() []string {
-	return c.pnames
-}
-
-func (c *Context) SetParamNames(names ...string) {
-	c.pnames = names
-}
-
-func (c *Context) ParamValues() []string {
-	return c.pvalues[:len(c.pnames)]
-}
-
-func (c *Context) SetParamValues(values ...string) {
-	c.pvalues = values
 }
 
 func (c *Context) QueryParam(name string) string {
@@ -86,25 +46,15 @@ func (c *Context) QueryString() string {
 	return c.request.URL.RawQuery
 }
 
-func (c *Context) Bind(i interface{}) error {
-	return nil
+func (c *Context) FormValue(name string) string {
+	return c.request.FormValue(name)
 }
 
-func (c *Context) String(code int, s string) error {
-	return c.Blob(code, "text/plain; charset=UTF-8", []byte(s))
-}
-
-func (c *Context) Blob(code int, contentType string, b []byte) error {
-	header := c.Response().Header()
-	header.Set("Content-Type", contentType)
-	c.response.WriteHeader(code)
-	_, err := c.response.Write(b)
-	return err
-}
-
-func (c *Context) NoContent(code int) error {
-	c.response.WriteHeader(code)
-	return nil
+func (c *Context) FormParams() (url.Values, error) {
+	if err := c.request.ParseForm(); err != nil {
+		return nil, err
+	}
+	return c.request.Form, nil
 }
 
 func (c *Context) Handler() HandlerFunc {
@@ -115,12 +65,35 @@ func (c *Context) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
+func (c *Context) String(code int, s string) error {
+	return c.blob(code, MIMETextPlainCharsetUTF8, []byte(s))
+}
+
+func (c *Context) JSON(code int, i interface{}) error {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	return c.blob(code, MIMEApplicationJSON, b)
+}
+
+func (c *Context) NoContent(code int) error {
+	c.response.WriteHeader(code)
+	_, err := c.response.Write(nil)
+	return err
+}
+
 func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
-	c.response = w
+	c.response = newResponse(w)
 	c.query = nil
 	c.handler = nil
-	c.path = ""
-	c.pnames = nil
-	c.pvalues = nil
+}
+
+func (c *Context) blob(code int, contentType string, b []byte) error {
+	header := c.Response().Header()
+	header.Set("Content-Type", contentType)
+	c.response.WriteHeader(code)
+	_, err := c.response.Write(b)
+	return err
 }

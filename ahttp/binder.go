@@ -1,53 +1,73 @@
 package ahttp
 
 import (
-	"encoding"
 	"encoding/json"
-	"errors"
+	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
 type DefaultBinder struct{}
 
-func (b *DefaultBinder) BindHeaders(c *Context, i interface{}) error {
-	return b.bindData(i, c.Request().Header, "header")
-}
-
-func (b *DefaultBinder) BindPathParams(c *Context, i interface{}) error {
-	names := c.ParamNames()
-	values := c.ParamValues()
-	params := map[string][]string{}
-	for i, name := range names {
-		params[name] = []string{values[i]}
+func (b *DefaultBinder) BindHeaders(i interface{}, c *Context) error {
+	if err := b.bindData(i, c.Request().Header); err != nil {
+		return err
 	}
-	return b.bindData(i, params, "param")
+	return nil
 }
 
-func (b *DefaultBinder) BindQueryParams(c *Context, i interface{}) error {
-	return b.bindData(i, c.QueryParams(), "query")
+func (b *DefaultBinder) BindQueryParams(i interface{}, c *Context) error {
+	if err := b.bindData(i, c.QueryParams()); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (b *DefaultBinder) BindBody(c *Context, i interface{}) error {
+func (b *DefaultBinder) BindBody(i interface{}, c *Context) error {
 	request := c.Request()
 	if request.ContentLength == 0 {
 		return nil
 	}
 	ctype := request.Header.Get("Content-Type")
-	if strings.HasPrefix(ctype, "application/json") {
-		return json.NewDecoder(c.Request().Body).Decode(i)
+	if strings.HasPrefix(ctype, MIMEApplicationJSON) {
+		if err := json.NewDecoder(request.Body).Decode(i); err != nil {
+			switch err.(type) {
+			case *HTTPError:
+				return err
+			default:
+				return ErrBadRequest.SetInternal(err)
+			}
+		}
+		return nil
 	}
-	return errors.New("unsupported type")
+	if strings.HasPrefix(ctype, MIMEApplicationForm) {
+		params, err := c.FormParams()
+		if err != nil {
+			return ErrBadRequest.SetInternal(err)
+		}
+		if err := b.bindData(i, params); err != nil {
+			return ErrBadRequest.SetInternal(err)
+		}
+		return nil
+	}
+	return ErrUnsupportedMediaType
 }
 
-func (b *DefaultBinder) bindData(dest interface{}, data map[string][]string, tag string) error {
+func (b *DefaultBinder) Bind(i interface{}, c *Context) error {
+	method := c.Request().Method
+	if method == http.MethodGet {
+		return b.BindQueryParams(i, c)
+	} else {
+		return b.BindBody(i, c)
+	}
+}
+
+func (b *DefaultBinder) bindData(dest interface{}, data map[string][]string) error {
 	if dest == nil || len(data) == 0 {
 		return nil
 	}
-	typ := reflect.TypeOf(dest).Elem()
-	val := reflect.ValueOf(dest).Elem()
-
+	typ := reflect.TypeOf(dest)
+	val := reflect.ValueOf(dest)
 	if typ.Kind() == reflect.Map && typ.Key().Kind() == reflect.String {
 		k := typ.Elem().Kind()
 		isElemString := k == reflect.String
@@ -55,9 +75,6 @@ func (b *DefaultBinder) bindData(dest interface{}, data map[string][]string, tag
 		ifElemSliceOfStrings := k == reflect.Slice && typ.Elem().Elem().Kind() == reflect.String
 		if !(isElemString || isElemInterface || ifElemSliceOfStrings) {
 			return nil
-		}
-		if val.IsNil() {
-			val.Set(reflect.MakeMap(typ))
 		}
 		for k, v := range data {
 			if isElemString {
@@ -69,151 +86,5 @@ func (b *DefaultBinder) bindData(dest interface{}, data map[string][]string, tag
 			}
 		}
 	}
-
-	if typ.Kind() != reflect.Struct {
-		return nil
-	}
-
-	for i := 0; i < typ.NumField(); i++ {
-		typeField := typ.Field(i)
-		structField := val.Field(i)
-		if typeField.Anonymous {
-			if structField.Kind() == reflect.Ptr {
-				structField = structField.Elem()
-			}
-		}
-		if !structField.CanSet() {
-			continue
-		}
-		structFieldKind := structField.Kind()
-		inputFieldName := typeField.Tag.Get(tag)
-		if typeField.Anonymous && structFieldKind == reflect.Struct && inputFieldName != "" {
-			return nil
-		}
-
-		if inputFieldName == "" {
-			continue
-		}
-
-		inputValue, exists := data[inputFieldName]
-
-		if !exists {
-			continue
-		}
-
-		if ok, err := unmarshalInputToField(typeField.Type.Kind(), inputValue[0], structField); ok {
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		if structFieldKind == reflect.Pointer {
-			structFieldKind = structField.Elem().Kind()
-			structField = structField.Elem()
-		}
-
-		if structFieldKind == reflect.Slice {
-			sliceOf := structField.Type().Elem().Kind()
-			numElems := len(inputValue)
-			slice := reflect.MakeSlice(structField.Type(), numElems, numElems)
-			for j := 0; j < numElems; j++ {
-				if err := setWithProperType(sliceOf, inputValue[j], slice.Index(j)); err != nil {
-					return err
-				}
-			}
-			structField.Set(slice)
-			continue
-		}
-
-		if err := setWithProperType(structFieldKind, inputValue[0], structField); err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func setWithProperType(valueKind reflect.Kind, val string, structField reflect.Value) error {
-	if ok, err := unmarshalInputToField(valueKind, val, structField); ok {
-		return err
-	}
-	switch valueKind {
-	case reflect.Ptr:
-		return setWithProperType(structField.Elem().Kind(), val, structField.Elem())
-	case reflect.Int:
-		return setIntField(val, 0, structField)
-	case reflect.Uint:
-		return setUintField(val, 0, structField)
-	case reflect.Bool:
-		return setBoolField(val, structField)
-	case reflect.Float32:
-		return setFloatField(val, 32, structField)
-	case reflect.Float64:
-		return setFloatField(val, 64, structField)
-	case reflect.String:
-		structField.SetString(val)
-		return nil
-	default:
-		return errors.New("unsupported type")
-	}
-}
-
-func unmarshalInputToField(valueKind reflect.Kind, val string, field reflect.Value) (bool, error) {
-	if valueKind == reflect.Ptr {
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		field = field.Elem()
-	}
-	fieldIValue := field.Addr().Interface()
-	switch unmarshaler := fieldIValue.(type) {
-	case encoding.TextUnmarshaler:
-		return true, unmarshaler.UnmarshalText([]byte(val))
-	}
-	return false, nil
-}
-
-func setIntField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0"
-	}
-	intVal, err := strconv.ParseInt(value, 10, bitSize)
-	if err == nil {
-		field.SetInt(intVal)
-	}
-	return err
-}
-
-func setUintField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0"
-	}
-	intVal, err := strconv.ParseUint(value, 10, bitSize)
-	if err == nil {
-		field.SetUint(intVal)
-	}
-	return err
-}
-
-func setBoolField(value string, field reflect.Value) error {
-	if value == "" {
-		value = "false"
-	}
-	boolVal, err := strconv.ParseBool(value)
-	if err == nil {
-		field.SetBool(boolVal)
-	}
-	return err
-}
-
-func setFloatField(value string, bitSize int, field reflect.Value) error {
-	if value == "" {
-		value = "0.0"
-	}
-	floatVal, err := strconv.ParseFloat(value, bitSize)
-	if err == nil {
-		field.SetFloat(floatVal)
-	}
-	return err
 }

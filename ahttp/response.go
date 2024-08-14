@@ -6,29 +6,32 @@ import (
 	"net/http"
 )
 
-func newResponse(w io.Writer) *response {
-	return &response{
+func newResponse(w io.Writer) *Response {
+	return &Response{
 		r: &http.Response{},
 		w: w,
 	}
 }
 
-type response struct {
+type Response struct {
 	r *http.Response
 	w io.Writer
 }
 
-var _ http.ResponseWriter = &response{}
+var _ http.ResponseWriter = &Response{}
 
-func (r *response) Header() http.Header {
-	panic("unreachable code")
+func (r *Response) Header() http.Header {
+	if r.r.Header == nil {
+		r.r.Header = make(http.Header)
+	}
+	return r.r.Header
 }
 
-func (r *response) WriteHeader(code int) {
+func (r *Response) WriteHeader(code int) {
 	r.r.StatusCode = code
 }
 
-func (r *response) Write(b []byte) (int, error) {
+func (r *Response) Write(b []byte) (int, error) {
 	r.r.Body = io.NopCloser(bytes.NewReader(b))
 	err := r.r.Write(r.w)
 	if err != nil {

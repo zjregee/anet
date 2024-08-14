@@ -1,7 +1,10 @@
 package ahttp
 
 func newRouter() *router {
-	return &router{}
+	return &router{
+		root:   &node{children: make(map[byte]*node)},
+		routes: make(map[string]HandlerFunc),
+	}
 }
 
 type router struct {

@@ -13,6 +13,17 @@ type HandlerFunc func(c *Context) error
 
 type MiddlewareFunc func(next HandlerFunc) HandlerFunc
 
+var NotFoundHandler HandlerFunc = func(c *Context) error {
+	return ErrNotFound
+}
+
+const (
+	MIMEApplicationJSON      = "application/json"
+	MIMEApplicationForm      = "application/x-www-form-urlencoded"
+	MIMETextPlain            = "text/plain"
+	MIMETextPlainCharsetUTF8 = MIMETextPlain + "; charset=utf-8"
+)
+
 type Server struct {
 	router        *router
 	pool          sync.Pool
@@ -24,7 +35,7 @@ func New() *Server {
 	s := &Server{}
 	s.router = newRouter()
 	s.pool.New = func() interface{} {
-		return newContext()
+		return newContext(nil, nil)
 	}
 	return s
 }
