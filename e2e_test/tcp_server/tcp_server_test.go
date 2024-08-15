@@ -1,4 +1,4 @@
-package echoserver
+package tcpserver
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"github.com/zjregee/anet"
 )
 
-func TestEchoServerSerial(t *testing.T) {
+func TestTCPServerSerial(t *testing.T) {
 	port := ":8001"
 	stopchan := make(chan interface{})
 	runServer(port, stopchan)
@@ -46,7 +46,7 @@ func TestEchoServerSerial(t *testing.T) {
 	}
 }
 
-func TestEchoServerConcurrent(t *testing.T) {
+func TestTCPServerConcurrent(t *testing.T) {
 	port := ":8002"
 	stopchan := make(chan interface{})
 	runServer(port, stopchan)

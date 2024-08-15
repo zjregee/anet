@@ -270,7 +270,7 @@ func (c *connection) waitReadUntil(delim byte) ([]byte, error) {
 				}
 			}
 			if index != -1 {
-				c.inputBuffer.SeekAck(index + 1)
+				_ = c.inputBuffer.SeekAck(index + 1)
 				return data[:index+1], nil
 			}
 		}

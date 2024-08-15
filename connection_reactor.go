@@ -5,12 +5,12 @@ const (
 )
 
 func (c *connection) onRead(n int, err error) {
-	c.inputBuffer.BookAck(n)
+	_ = c.inputBuffer.BookAck(n)
 	c.readTrigger <- err
 }
 
 func (c *connection) onWrite(n int, err error) {
-	c.outputBuffer.SeekAck(n)
+	_ = c.outputBuffer.SeekAck(n)
 	c.writeTrigger <- err
 }
 

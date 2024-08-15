@@ -1,4 +1,4 @@
-package echoserver
+package tcpserver
 
 import (
 	"context"
@@ -16,11 +16,13 @@ func runServer(port string, stopChan chan interface{}) {
 	if err != nil {
 		panic("shouldn't failed here")
 	}
-	go eventLoop.Serve(listener)
+	go func() {
+		_ = eventLoop.Serve(listener)
+	}()
 
 	go func() {
 		<-stopChan
-		eventLoop.Shutdown(context.Background())
+		_ = eventLoop.Shutdown(context.Background())
 		listener.Close()
 	}()
 }

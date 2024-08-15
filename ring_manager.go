@@ -22,7 +22,7 @@ type roundRobinLB struct {
 }
 
 func (b *roundRobinLB) Pick() (ring Ring) {
-	if b.rings == nil || len(b.rings) == 0 {
+	if len(b.rings) == 0 {
 		return nil
 	}
 	index := int(atomic.AddInt32(&b.lastpicked, 1)) % len(b.rings)
@@ -55,7 +55,9 @@ func (m *manager) Run() error {
 			errs = append(errs, err)
 			log.Warnf("error occurred while open ring")
 		} else {
-			go ring.Wait()
+			go func() {
+				_ = ring.Wait()
+			}()
 			rings = append(rings, ring)
 		}
 	}
