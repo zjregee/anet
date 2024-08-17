@@ -18,6 +18,18 @@ type Context struct {
 	response http.ResponseWriter
 	query    url.Values
 	handler  HandlerFunc
+	store    map[string]interface{}
+}
+
+func (c *Context) Get(key string) interface{} {
+	return c.store[key]
+}
+
+func (c *Context) Set(key string, val interface{}) {
+	if c.store == nil {
+		c.store = make(map[string]interface{})
+	}
+	c.store[key] = val
 }
 
 func (c *Context) Request() *http.Request {
@@ -88,6 +100,7 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.response = w
 	c.query = nil
 	c.handler = nil
+	c.store = nil
 }
 
 func (c *Context) blob(code int, contentType string, b []byte) error {

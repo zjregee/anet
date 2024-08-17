@@ -5,6 +5,7 @@ go 1.22.0
 require (
 	github.com/cloudwego/netpoll v0.6.2
 	github.com/ebitengine/purego v0.7.1
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.7.0
