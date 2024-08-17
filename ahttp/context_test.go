@@ -90,7 +90,7 @@ func TestContextString(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	c := newContext(req, rec)
-	c.String(http.StatusOK, testJson)
+	_ = c.String(http.StatusOK, testJson)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, testJson, rec.Body.String())
 }
@@ -99,7 +99,7 @@ func TestContextJSON(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
 	c := newContext(req, rec)
-	c.JSON(http.StatusOK, testJsonData{"test", 18})
+	_ = c.JSON(http.StatusOK, testJsonData{"test", 18})
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, testJson, rec.Body.String())
 }
