@@ -9,13 +9,13 @@ import (
 func newContext(r *http.Request, w http.ResponseWriter) *Context {
 	return &Context{
 		request:  r,
-		response: newResponse(w),
+		response: w,
 	}
 }
 
 type Context struct {
 	request  *http.Request
-	response *Response
+	response http.ResponseWriter
 	query    url.Values
 	handler  HandlerFunc
 }
@@ -24,7 +24,7 @@ func (c *Context) Request() *http.Request {
 	return c.request
 }
 
-func (c *Context) Response() *Response {
+func (c *Context) Response() http.ResponseWriter {
 	return c.response
 }
 
@@ -85,7 +85,7 @@ func (c *Context) NoContent(code int) error {
 
 func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
-	c.response = newResponse(w)
+	c.response = w
 	c.query = nil
 	c.handler = nil
 }

@@ -23,7 +23,7 @@ func runServer(port string, stopChan chan interface{}) {
 	go func() {
 		<-stopChan
 		_ = eventLoop.Shutdown(context.Background())
-		listener.Close()
+		_ = listener.Close()
 	}()
 }
 

@@ -3,6 +3,7 @@ package ahttp
 import (
 	"bufio"
 	"context"
+	"net"
 	"net/http"
 	"sync"
 
@@ -25,10 +26,11 @@ const (
 )
 
 type Server struct {
-	router        *router
-	pool          sync.Pool
-	premiddleware []MiddlewareFunc
-	middleware    []MiddlewareFunc
+	router     *router
+	pool       sync.Pool
+	listener   net.Listener
+	eventLoop  anet.EventLoop
+	middleware []MiddlewareFunc
 }
 
 func New() *Server {
@@ -49,11 +51,15 @@ func (s *Server) Start(address string) error {
 	if err != nil {
 		panic("shouldn't failed here")
 	}
-	return eventLoop.Serve(listener)
+	s.listener = listener
+	s.eventLoop = eventLoop
+	return s.eventLoop.Serve(listener)
 }
 
-func (s *Server) Pre(middleware ...MiddlewareFunc) {
-	s.premiddleware = append(s.premiddleware, middleware...)
+func (s *Server) Shutdown() error {
+	_ = s.eventLoop.Shutdown(context.Background())
+	_ = s.listener.Close()
+	return nil
 }
 
 func (s *Server) Use(middleware ...MiddlewareFunc) {
@@ -87,21 +93,11 @@ func (s *Server) handleConnection(_ context.Context, connection anet.Connection)
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	c := s.pool.Get().(*Context)
 	c.Reset(r, w)
-	var h HandlerFunc
-	if s.premiddleware == nil {
-		h = s.router.find(getPath(r))
-		c.SetHandler(h)
-		h = applyMiddleware(h, s.middleware...)
-	} else {
-		h = func(c *Context) error {
-			h = s.router.find(getPath(r))
-			c.SetHandler(h)
-			h = applyMiddleware(h, s.middleware...)
-			return h(c)
-		}
-		h = applyMiddleware(h, s.premiddleware...)
-	}
+	h := s.router.find(getPath(r))
+	c.SetHandler(h)
+	h = applyMiddleware(h, s.middleware...)
 	_ = h(c)
+	c.Reset(nil, nil)
 	s.pool.Put(c)
 }
 

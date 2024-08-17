@@ -86,6 +86,24 @@ func TestContextSetHandler(t *testing.T) {
 	assert.NotNil(t, c.handler)
 }
 
+func TestContextString(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	rec := httptest.NewRecorder()
+	c := newContext(req, rec)
+	c.String(http.StatusOK, testJson)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, testJson, rec.Body.String())
+}
+
+func TestContextJSON(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	rec := httptest.NewRecorder()
+	c := newContext(req, rec)
+	c.JSON(http.StatusOK, testJsonData{"test", 18})
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, testJson, rec.Body.String())
+}
+
 func TestContextReset(t *testing.T) {
 	c := newTestContextWithJson()
 	c.Reset(httptest.NewRequest(http.MethodGet, "/", nil), httptest.NewRecorder())
