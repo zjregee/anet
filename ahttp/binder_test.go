@@ -40,3 +40,33 @@ func TestBinderBindBodyForm(t *testing.T) {
 	assert.Equal(t, "test", bindData["name"])
 	assert.Equal(t, "18", bindData["age"])
 }
+
+func TestBinderBindStruct(t *testing.T) {
+	c := newTestContextWithJson()
+	b := &DefaultBinder{}
+
+	type testQueryData struct {
+		Name string `query:"name"`
+		Age  int    `query:"age"`
+	}
+	bindQueryData := &testQueryData{}
+	_ = b.BindQueryParams(bindQueryData, c)
+	assert.Equal(t, "test", bindQueryData.Name)
+	assert.Equal(t, 18, bindQueryData.Age)
+
+	type testFormData struct {
+		Name string `form:"name"`
+		Age  int    `form:"age"`
+	}
+	bindFormData := &testFormData{}
+	_ = b.BindBody(bindFormData, c)
+	assert.Equal(t, "test", bindFormData.Name)
+	assert.Equal(t, 18, bindFormData.Age)
+
+	type testHeaderData struct {
+		ContentType string `header:"Content-Type"`
+	}
+	bindHeaderData := &testHeaderData{}
+	_ = b.BindHeaders(bindHeaderData, c)
+	assert.Equal(t, MIMEApplicationJSON, bindHeaderData.ContentType)
+}
