@@ -66,8 +66,16 @@ func (s *Server) Use(middleware ...MiddlewareFunc) {
 	s.middleware = append(s.middleware, middleware...)
 }
 
-func (s *Server) Add(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	s.router.add(path, func(c *Context) error {
+func (s *Server) GET(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	s.add(http.MethodGet, path, handler, middleware...)
+}
+
+func (s *Server) POST(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	s.add(http.MethodPost, path, handler, middleware...)
+}
+
+func (s *Server) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	s.router.add(method, path, func(c *Context) error {
 		h := applyMiddleware(handler, middleware...)
 		return h(c)
 	})
@@ -93,7 +101,14 @@ func (s *Server) handleConnection(_ context.Context, connection anet.Connection)
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	c := s.pool.Get().(*Context)
 	c.Reset(r, w)
-	h := s.router.find(getPath(r))
+	h, params := s.router.find(r.Method, getPath(r))
+	if h != nil {
+		for k, v := range params {
+			c.Set(k, v)
+		}
+	} else {
+		h = NotFoundHandler
+	}
 	c.SetHandler(h)
 	h = applyMiddleware(h, s.middleware...)
 	_ = h(c)

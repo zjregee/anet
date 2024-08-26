@@ -1,62 +1,104 @@
 package ahttp
 
+import (
+	"strings"
+)
+
+type node struct {
+	part     string
+	isParam  bool
+	isWild   bool
+	isEnd    bool
+	children map[string]*node
+	handler  HandlerFunc
+}
+
+func newNode(part string, isParam, isWild bool) *node {
+	return &node{
+		part:     part,
+		isParam:  isParam,
+		isWild:   isWild,
+		children: make(map[string]*node),
+	}
+}
+
+func (n *node) insert(parts []string, handler HandlerFunc) {
+	node := n
+	for i := 0; i < len(parts); i++ {
+		part := parts[i]
+		isParam := strings.HasPrefix(part, ":")
+		isWild := strings.HasPrefix(part, "*")
+		child, ok := node.children[part]
+		if !ok {
+			child = newNode(part, isParam, isWild)
+			node.children[part] = child
+		}
+		node = child
+	}
+	node.isEnd = true
+	node.handler = handler
+}
+
+func (n *node) search(parts []string) (HandlerFunc, map[string]string) {
+	node := n
+	params := make(map[string]string)
+	for _, part := range parts {
+		child, ok := node.children[part]
+		if !ok {
+			for _, childNode := range node.children {
+				if childNode.isParam {
+					params[childNode.part[1:]] = part
+					child = childNode
+					break
+				}
+				if childNode.isWild {
+					params[childNode.part[1:]] = strings.Join(parts, "/")
+					child = childNode
+					break
+				}
+			}
+		}
+		if child == nil {
+			return nil, nil
+		}
+		node = child
+	}
+	if node.isEnd {
+		return node.handler, params
+	}
+	return nil, nil
+}
+
 func newRouter() *router {
 	return &router{
-		root:   &node{children: make(map[byte]*node)},
-		routes: make(map[string]HandlerFunc),
+		routes: make(map[string]*node),
 	}
 }
 
 type router struct {
-	root   *node
-	routes map[string]HandlerFunc
+	routes map[string]*node
 }
 
-type node struct {
-	children map[byte]*node
-	isEnd    bool
-}
-
-func (r *router) add(path string, h HandlerFunc) {
+func (r *router) add(method, path string, h HandlerFunc) {
 	path = normalizePathSlash(path)
-	r.routes[path] = h
-	r.insert(path)
+	node, ok := r.routes[method]
+	if !ok {
+		node = newNode("/", false, false)
+		r.routes[method] = node
+	}
+	parts := strings.Split(path, "/")
+	node.insert(parts, h)
 }
 
-func (r *router) find(path string) HandlerFunc {
+func (r *router) find(method, path string) (HandlerFunc, map[string]string) {
 	path = normalizePathSlash(path)
-	prefix := r.longestPrefixMatch(path)
-	return r.routes[prefix]
-}
-
-func (r *router) insert(prefix string) {
-	n := r.root
-	for i := 0; i < len(prefix); i++ {
-		char := prefix[i]
-		if _, found := n.children[char]; !found {
-			n.children[char] = &node{children: make(map[byte]*node)}
-		}
-		n = n.children[char]
+	node, ok := r.routes[method]
+	if !ok {
+		return nil, nil
 	}
-	n.isEnd = true
-}
-
-func (r *router) longestPrefixMatch(query string) string {
-	n := r.root
-	longestPrefix := ""
-	currentPrefix := ""
-	for i := 0; i < len(query); i++ {
-		char := query[i]
-		if _, found := n.children[char]; !found {
-			break
-		}
-		n = n.children[char]
-		currentPrefix += string(char)
-		if n.isEnd {
-			longestPrefix = currentPrefix
-		}
-	}
-	return longestPrefix
+	parts := strings.Split(path, "/")
+	h, params := node.search(parts)
+	return h, params
 }
 
 func normalizePathSlash(path string) string {

@@ -8,7 +8,7 @@ import (
 
 func runServer(port string, stopChan chan interface{}) {
 	server := ahttp.New()
-	server.Add("/test", func(c *ahttp.Context) error {
+	server.GET("/test", func(c *ahttp.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 
