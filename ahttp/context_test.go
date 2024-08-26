@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -47,6 +48,29 @@ func TestContextResponse(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := newContext(req, rec)
 	assert.NotNil(t, c.Response())
+}
+
+func TestContextCookie(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	req.Header.Add("Cookie", "name=test")
+	req.Header.Add("Cookie", "age=18")
+	c := newContext(req, rec)
+	for _, cookie := range c.Cookies() {
+		assert.Contains(t, []string{"name", "age"}, cookie.Name)
+		assert.Contains(t, []string{"test", "18"}, cookie.Value)
+	}
+	cookie := &http.Cookie{
+		Name:     "name",
+		Value:    "test",
+		Expires:  time.Now().Add(24 * time.Hour),
+		Secure:   true,
+		HttpOnly: true,
+	}
+	c.SetCookie(cookie)
+	assert.Contains(t, rec.Header().Get("Set-Cookie"), "name=test")
+	assert.Contains(t, rec.Header().Get("Set-Cookie"), "Secure")
+	assert.Contains(t, rec.Header().Get("Set-Cookie"), "HttpOnly")
 }
 
 func TestContextQueryParam(t *testing.T) {

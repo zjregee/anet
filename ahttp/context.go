@@ -40,6 +40,18 @@ func (c *Context) Response() http.ResponseWriter {
 	return c.response
 }
 
+func (c *Context) Cookie(name string) (*http.Cookie, error) {
+	return c.request.Cookie(name)
+}
+
+func (c *Context) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(c.response, cookie)
+}
+
+func (c *Context) Cookies() []*http.Cookie {
+	return c.request.Cookies()
+}
+
 func (c *Context) QueryParam(name string) string {
 	if c.query == nil {
 		c.query = c.request.URL.Query()
