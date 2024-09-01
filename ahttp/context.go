@@ -2,6 +2,7 @@ package ahttp
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -118,6 +119,7 @@ func (c *Context) Reset(r *http.Request, w http.ResponseWriter) {
 func (c *Context) blob(code int, contentType string, b []byte) error {
 	header := c.Response().Header()
 	header.Set("Content-Type", contentType)
+	header.Set("Content-Length", fmt.Sprint(len(b)))
 	c.response.WriteHeader(code)
 	_, err := c.response.Write(b)
 	return err

@@ -8,7 +8,11 @@ import (
 
 func newResponse(w io.Writer) *Response {
 	return &Response{
-		r: &http.Response{},
+		r: &http.Response{
+			Proto:      "HTTP/1.1",
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+		},
 		w: w,
 	}
 }

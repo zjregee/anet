@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git clone https://github.com/axboe/liburing.git
+git clone -b liburing-2.7 https://github.com/axboe/liburing.git
 cd liburing
 ./configure --cc=gcc --cxx=g++
 make -j$(nproc)

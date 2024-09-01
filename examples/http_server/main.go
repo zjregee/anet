@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
-	"context"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/sirupsen/logrus"
 	"github.com/zjregee/anet"
+	"github.com/zjregee/anet/ahttp"
 )
 
 func main() {
@@ -25,47 +24,22 @@ func main() {
 	logger.SetLevel(logrus.InfoLevel)
 	anet.SetLogger(logger)
 
-	listener, err := anet.CreateListener("tcp", ":8080")
-	if err != nil {
-		panic("shouldn't failed here")
-	}
-
-	eventLoop, err := anet.NewEventLoop(handleConnection)
-	if err != nil {
-		panic("shouldn't failed here")
-	}
-	_ = eventLoop.Serve(listener)
-}
-
-func handleConnection(_ context.Context, connection anet.Connection) error {
-	reader := bufio.NewReader(connection)
-	writer := connection.Writer()
-
-	for {
-		request, err := http.ReadRequest(reader)
-		if err != nil {
-			return err
+	server := ahttp.New()
+	server.GET("/test", func(c *ahttp.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	server.POST("/test/name/:name/age/:age", func(c *ahttp.Context) error {
+		return c.String(http.StatusOK, fmt.Sprintf("name: %s, age: %s", c.Get("name"), c.Get("age")))
+	})
+	server.POST("/test", func(c *ahttp.Context) error {
+		data := struct {
+			Name string `json:"name"`
+			Age  int    `json:"age"`
+		}{
+			Name: "bob",
+			Age:  18,
 		}
-		fmt.Printf("request: %s\n", request.URL)
-		fmt.Printf("request: %s\n", request.Method)
-
-		response := http.Response{
-			StatusCode: 200,
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Header:     make(http.Header),
-			Body:       nil,
-		}
-		response.Header.Set("Content-Type", "text/plain")
-
-		err = response.Write(connection)
-		if err != nil {
-			return err
-		}
-
-		err = writer.Flush()
-		if err != nil {
-			return err
-		}
-	}
+		return c.JSON(http.StatusOK, data)
+	})
+	_ = server.Start(":8080")
 }
