@@ -1,19 +1,19 @@
 net
 qps: 461582.003546
-average latency: 80.711397 ms
-99th percentile latency: 1569.508916 ms
+average latency: 80.711397 us
+99th percentile latency: 1569.508916 us
 
 gnet
 qps: 322150.702136
-average latency: 373.484487 ms
-99th percentile latency: 776.842779 ms
+average latency: 373.484487 us
+99th percentile latency: 776.842779 us
 
 netpoll
 qps: 488364.046968
-average latency: 84.782965 ms
-99th percentile latency: 1359.529940 ms
+average latency: 84.782965 us
+99th percentile latency: 1359.529940 us
 
 anet
 qps: 413194.093871
-average latency: 165.628039 ms
-99th percentile latency: 1209.859366 ms
+average latency: 165.628039 us
+99th percentile latency: 1209.859366 us

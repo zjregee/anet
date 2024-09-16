@@ -88,6 +88,6 @@ func main() {
 	fmt.Printf("the total time for %s to execute %dk connections using %d goroutines, with %d bytes per write, is: %d min %d sec %d ms\n", name, count/1000, c, messageLength, minutes, seconds, milliseconds)
 	qps := float64(count) / elapsed.Seconds()
 	fmt.Printf("qps: %f\n", qps)
-	fmt.Printf("average latency: %f ms\n", t.Quantile(0.5))
-	fmt.Printf("99th percentile latency: %f ms\n", t.Quantile(0.99))
+	fmt.Printf("average latency: %f us\n", t.Quantile(0.5))
+	fmt.Printf("99th percentile latency: %f us\n", t.Quantile(0.99))
 }
