@@ -9,6 +9,9 @@ go build -v -o output/bencher ./bencher
 mkdir -p output/net
 go build -v -o output/net/bench ./net
 
+mkdir -p output/gnet
+go build -v -o output/gnet/bench ./gnet
+
 mkdir -p output/netpoll
 go build -v -o output/netpoll/bench ./netpoll
 

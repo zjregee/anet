@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/caio/go-tdigest/v4"
 	"github.com/zjregee/anet"
 )
 
@@ -28,6 +29,7 @@ func main() {
 	flag.Parse()
 
 	count := 0
+	t, _ := tdigest.New()
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	message := anet.GetRandomString(messageLength-1) + "\n"
@@ -49,30 +51,31 @@ func main() {
 				return
 			}
 			for {
-				mu.Lock()
-				if count == m {
-					mu.Unlock()
-					return
-				}
-				count += 1
-				mu.Unlock()
+				start := time.Now()
 				_, err = conn.Write([]byte(message))
 				if err != nil {
 					fmt.Printf("failed to send message: %v\n", err)
 					return
 				}
-
 				response, err := bufio.NewReader(conn).ReadString('\n')
 				if err != nil {
 					fmt.Printf("failed to read response: %v\n", err)
 					return
 				}
-
+				elapsed := time.Since(start)
 				if response != message {
 					fmt.Printf("expect: %s\n", message)
 					fmt.Printf("actual: %s\n", response)
 					return
 				}
+				mu.Lock()
+				count += 1
+				_ = t.Add(float64(elapsed.Microseconds()))
+				if count > m {
+					mu.Unlock()
+					return
+				}
+				mu.Unlock()
 			}
 		}(i)
 	}
@@ -82,5 +85,9 @@ func main() {
 	minutes := int(elapsed.Minutes())
 	seconds := int(elapsed.Seconds()) % 60
 	milliseconds := int(elapsed.Milliseconds() % 1000)
-	fmt.Printf("the total time for %s to execute %dk connections using %d goroutines, with %d bytes per write, is: %d min %d sec %d ms\n", name, m/1000, c, messageLength, minutes, seconds, milliseconds)
+	fmt.Printf("the total time for %s to execute %dk connections using %d goroutines, with %d bytes per write, is: %d min %d sec %d ms\n", name, count/1000, c, messageLength, minutes, seconds, milliseconds)
+	qps := float64(count) / elapsed.Seconds()
+	fmt.Printf("qps: %f\n", qps)
+	fmt.Printf("average latency: %f ms\n", t.Quantile(0.5))
+	fmt.Printf("99th percentile latency: %f ms\n", t.Quantile(0.99))
 }
